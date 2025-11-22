@@ -1,0 +1,4 @@
+rootProject.name = 'TerraWar'
+include 'TerraWarServer'
+include 'TerraWarClient'
+
