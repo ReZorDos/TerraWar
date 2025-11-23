@@ -14,6 +14,7 @@ public class GameState {
     private Hexagon selectedHexagon;
     private List<Hex> highlightedNeighbors;
     private int selectedOwnerId = -1;
+    private int currentPlayerId = -1;
 
     public void clearSelection() {
         if (selectedHexagon != null) {
@@ -36,4 +37,9 @@ public class GameState {
                 .anyMatch(neighbor -> neighbor.getX() == hexagon.getGridX()
                         && neighbor.getY() == hexagon.getGridY());
     }
+
+    public boolean canInteractWithHex(Hex hex) {
+        return hex.getOwnerId() == -1 || hex.getOwnerId() == currentPlayerId;
+    }
+
 }

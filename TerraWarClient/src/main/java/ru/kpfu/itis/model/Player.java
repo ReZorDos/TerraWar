@@ -22,7 +22,7 @@ public class Player {
         this.name = name;
         this.color = color;
         this.money = 10;
-        this.income = 1;
+        this.income = 3;
         this.ownedHexes = new ArrayList<>();
     }
 
