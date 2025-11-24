@@ -12,29 +12,47 @@ import javafx.scene.text.Text;
 import ru.kpfu.itis.model.GameMap;
 import ru.kpfu.itis.model.Hex;
 import ru.kpfu.itis.model.Player;
-import ru.kpfu.itis.service.Game;
-import ru.kpfu.itis.service.GameMapService;
+import ru.kpfu.itis.model.Unit;
+import ru.kpfu.itis.service.*;
 import ru.kpfu.itis.state.GameState;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * GameMapPane - PURE VIEW (только отображение)
+ * Вся логика делегируется в GameActionService
+ */
 public class GameMapPane extends VBox {
 
     private final GameMap gameMap;
-    private final GameMapService gameMapService;
-    private final GameState gameState;
-    private final Map<String, Hexagon> hexagons;
     private final Game game;
+    private final GameState gameState;
+
+    private final GameMapService gameMapService;
+    private final GameActionService gameActionService;
+    private final GameTurnManager turnManager;
+    private final UnitManager unitManager;
+
+    private final Map<String, Hexagon> hexagons;
     private final Pane mapPane;
     private final Text turnInfoText;
+    private final Text unitCountText;
     private final Button endTurnButton;
 
-    public GameMapPane(GameMap gameMap, GameMapService gameMapService, Game game) {
+    private Unit selectedUnit = null;
+    private List<Hex> actionHexes = null;
+
+    public GameMapPane(GameMap gameMap, GameMapService gameMapService,
+                       GameActionService gameActionService, Game game,
+                       GameTurnManager turnManager, UnitManager unitManager) {
         this.gameMap = gameMap;
         this.gameMapService = gameMapService;
+        this.gameActionService = gameActionService;
         this.game = game;
+        this.turnManager = turnManager;
+        this.unitManager = unitManager;
         this.gameState = new GameState();
         this.hexagons = new HashMap<>();
         this.mapPane = new Pane();
@@ -42,28 +60,35 @@ public class GameMapPane extends VBox {
         gameState.setCurrentPlayerId(game.getCurrentPlayer().getId());
 
         turnInfoText = new Text();
-        endTurnButton = new Button("End the turn");
+        unitCountText = new Text();
+        endTurnButton = new Button("Завершить ход");
 
         initializeUI();
         initializeMap();
         setupEventHandlers();
         updateTurnInfo();
+        turnManager.startPlayerTurn();
     }
 
+    /**
+     * Инициализация UI компонентов (только отображение)
+     */
     private void initializeUI() {
-        HBox controlPanel = new HBox(10);
-        controlPanel.setAlignment(Pos.TOP_RIGHT);
+        HBox controlPanel = new HBox(20);
+        controlPanel.setAlignment(Pos.TOP_LEFT);
         controlPanel.setStyle("-fx-padding: 10; -fx-background-color: #f0f0f0;");
-
-        controlPanel.getChildren().addAll(turnInfoText, endTurnButton);
+        controlPanel.getChildren().addAll(turnInfoText, unitCountText, endTurnButton);
 
         mapPane.setPrefSize(900, 550);
         turnInfoText.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        unitCountText.setFont(Font.font("Arial", FontWeight.BOLD, 12));
 
         this.getChildren().addAll(controlPanel, mapPane);
     }
 
-
+    /**
+     * Инициализация карты (только отображение)
+     */
     private void initializeMap() {
         mapPane.getChildren().clear();
         hexagons.clear();
@@ -81,47 +106,94 @@ public class GameMapPane extends VBox {
                 mapPane.getChildren().add(hexagon);
             }
         }
+
+        drawUnits();
     }
 
+    /**
+     * Рисует юнитов на карте (только отображение)
+     */
+    private void drawUnits() {
+        mapPane.getChildren().removeIf(node -> node instanceof Text);
+        List<Unit> allUnits = unitManager.getAllUnits();
+
+        for (Unit unit : allUnits) {
+            Hexagon hexagon = getHexagonAt(unit.getHexX(), unit.getHexY());
+            if (hexagon != null) {
+                drawUnitNumber(hexagon, unit);
+            }
+        }
+    }
+
+    /**
+     * Рисует номер/уровень юнита на гексе (только отображение)
+     */
+    private void drawUnitNumber(Hexagon hexagon, Unit unit) {
+        Text unitText = new Text(String.valueOf(unit.getLevel()));
+        unitText.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+
+        switch (unit.getOwnerId()) {
+            case 0 -> unitText.setFill(Color.DARKRED);
+            case 1 -> unitText.setFill(Color.DARKBLUE);
+            default -> unitText.setFill(Color.BLACK);
+        }
+
+        double[] center = Hexagon.getCenterCoords(hexagon.getGridX(), hexagon.getGridY());
+        unitText.setX(center[0] - 5);
+        unitText.setY(center[1] + 7);
+        mapPane.getChildren().add(unitText);
+    }
+
+    /**
+     * Обновляет информацию о ходе (только отображение)
+     */
     private void updateTurnInfo() {
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer != null) {
-            turnInfoText.setText(currentPlayer.getName() +
-                    " | Balance: " + currentPlayer.getMoney() +
-                    " $ | Income: +" + currentPlayer.getIncome() + " $");
+            turnInfoText.setText(turnManager.getTurnInfo());
             turnInfoText.setFill(getPlayerTextColor(currentPlayer.getId()));
+
+            int unitCount = unitManager.getPlayerUnits(currentPlayer.getId()).size();
+            unitCountText.setText("Юниты: " + unitCount);
+            unitCountText.setFill(getPlayerTextColor(currentPlayer.getId()));
         }
     }
 
+    /**
+     * Возвращает цвет текста для игрока (только отображение)
+     */
     private Color getPlayerTextColor(int playerId) {
-        switch (playerId) {
-            case 0: return Color.DARKRED;
-            case 1: return Color.DARKBLUE;
-            case 2: return Color.DARKGREEN;
-            case 3: return Color.PURPLE;
-            default: return Color.BLACK;
-        }
+        return switch (playerId) {
+            case 0 -> Color.DARKRED;
+            case 1 -> Color.DARKBLUE;
+            default -> Color.BLACK;
+        };
     }
 
+    /**
+     * Обновляет внешний вид гексагона (только отображение)
+     */
     private void updateHexagonAppearance(Hexagon hexagon, Hex hexData) {
-        hexagon.setHighlighted(false);
-        hexagon.setSelected(false);
         hexagon.setColor(getOwnerColor(hexData.getOwnerId()));
     }
 
+    /**
+     * Возвращает цвет гексагона в зависимости от владельца (только отображение)
+     */
     private Color getOwnerColor(int ownerId) {
         if (ownerId == -1) {
             return Color.LIGHTGRAY;
         }
-        switch (ownerId) {
-            case 0: return Color.RED;
-            case 1: return Color.BLUE;
-            case 2: return Color.GREEN;
-            case 3: return Color.PURPLE;
-            default: return Color.ORANGE;
-        }
+        return switch (ownerId) {
+            case 0 -> Color.RED;
+            case 1 -> Color.BLUE;
+            default -> Color.ORANGE;
+        };
     }
 
+    /**
+     * Настройка обработчиков событий
+     */
     private void setupEventHandlers() {
         mapPane.setOnMouseClicked(event -> {
             Hexagon clickedHex = getHexAtPixel(event.getX(), event.getY());
@@ -129,87 +201,147 @@ public class GameMapPane extends VBox {
                 handleHexClick(clickedHex);
             }
         });
-        endTurnButton.setOnAction(event -> {
-            endTurn();
-        });
+
+        endTurnButton.setOnAction(event -> endTurn());
     }
 
+    /**
+     * Обработчик клика по гексагону (логика здесь!)
+     */
     private void handleHexClick(Hexagon clickedHex) {
-        Hex clickedHexData = gameMap.getHex(clickedHex.getGridX(), clickedHex.getGridY());
-        if (!gameState.canInteractWithHex(clickedHexData)) {
-            gameState.clearSelection();
-            refreshHighlights();
+        Unit unitOnHex = unitManager.getUnitAt(clickedHex.getGridX(), clickedHex.getGridY());
+
+        // Клик по юниту текущего игрока, который может действовать
+        if (unitOnHex != null &&
+                unitOnHex.getOwnerId() == gameState.getCurrentPlayerId() &&
+                unitOnHex.canAct()) {
+
+            if (selectedUnit != unitOnHex) {
+                selectUnit(unitOnHex);
+            } else {
+                deselectUnit();
+            }
             return;
         }
 
-        if (clickedHexData.getOwnerId() == gameState.getCurrentPlayerId()) {
-            selectHex(clickedHex);
-        } else if (gameState.isHighlightedNeighbor(clickedHex)) {
-            captureHex(clickedHex);
-            gameState.clearSelection();
-            refreshHighlights();
-        } else {
-            gameState.clearSelection();
-            refreshHighlights();
+        // Клик по доступному гексу - выполнить действие юнита
+        if (selectedUnit != null && actionHexes != null &&
+                gameActionService.isHexInRadius(actionHexes, clickedHex.getGridX(), clickedHex.getGridY())) {
+
+            boolean success = gameActionService.actWithUnit(
+                    selectedUnit,
+                    clickedHex.getGridX(),
+                    clickedHex.getGridY()
+            );
+
+            if (success) {
+                deselectUnit();
+                updateTurnInfo();
+                initializeMap();
+            }
+            return;
         }
+
+        // Клик на пустую клетку - отмена выделения
+        deselectUnit();
     }
 
-    private void selectHex(Hexagon hexagon) {
-        gameState.clearSelection();
+    /**
+     * Выбрать юнита (только UI)
+     */
+    private void selectUnit(Unit unit) {
+        selectedUnit = unit;
 
-        gameState.setSelectedHexagon(hexagon);
-        gameState.setSelectedOwnerId(gameMap.getHex(hexagon.getGridX(), hexagon.getGridY()).getOwnerId());
-        hexagon.setSelected(true);
+        Hexagon hexagon = getHexagonAt(unit.getHexX(), unit.getHexY());
+        if (hexagon != null) {
+            hexagon.setSelected(true);
+        }
 
-        List<Hex> neighbors = gameMapService.getNeighbors(hexagon.getGridX(), hexagon.getGridY());
-        gameState.setHighlightedNeighbors(neighbors);
+        // ЛОГИКА ВЫЧИСЛЕНИЯ РАДИУСА В СЕРВИСЕ!
+        actionHexes = gameActionService.calculateActionRadius(unit);
+        refreshHighlights();
+
+        System.out.println("[UNIT] Выбран " + unit.getUnitTypeName() +
+                " (ур. " + unit.getLevel() + ", радиус: " + unit.getActionRadius() + ")");
+    }
+
+    /**
+     * Отменить выделение юнита (только UI)
+     */
+    private void deselectUnit() {
+        if (selectedUnit != null) {
+            Hexagon hexagon = getHexagonAt(selectedUnit.getHexX(), selectedUnit.getHexY());
+            if (hexagon != null) {
+                hexagon.setSelected(false);
+            }
+        }
+
+        selectedUnit = null;
+        actionHexes = null;
         refreshHighlights();
     }
 
-    private void captureHex(Hexagon neighborHex) {
-        Hex neighborData = gameMap.getHex(neighborHex.getGridX(), neighborHex.getGridY());
-        neighborData.setOwnerId(gameState.getCurrentPlayerId());
-        updateHexagonAppearance(neighborHex, neighborData);
+    /**
+     * Обновить подсветку доступных гексов (только UI)
+     */
+    private void refreshHighlights() {
+        // Сбрасываем подсветку всех гексов
+        hexagons.values().forEach(hexagon -> {
+            hexagon.setHighlighted(false);
+            hexagon.setSelected(false);
+        });
 
-        updateTurnInfo();
+        // Если юнит выбран - подсвечиваем доступные гексы
+        if (selectedUnit != null && actionHexes != null) {
+            for (Hex hex : actionHexes) {
+                Hexagon hexagon = getHexagonAt(hex.getX(), hex.getY());
+                if (hexagon != null) {
+                    hexagon.setHighlighted(true);
+                }
+            }
+
+            // Выделяем гекс с выбранным юнитом
+            Hexagon unitHex = getHexagonAt(selectedUnit.getHexX(), selectedUnit.getHexY());
+            if (unitHex != null) {
+                unitHex.setSelected(true);
+            }
+        }
     }
 
+    /**
+     * Завершить ход (только UI делегирование)
+     */
     private void endTurn() {
-        Player currentPlayer = game.getCurrentPlayer();
-        if (currentPlayer != null) {
-            currentPlayer.setMoney(currentPlayer.getMoney() + currentPlayer.getIncome());
-        }
+        deselectUnit();
+        turnManager.endPlayerTurn();
+        turnManager.startPlayerTurn();
 
-        game.nextTurn();
+        Player nextPlayer = game.getCurrentPlayer();
+        System.out.println("\n=== НОВЫЙ ХОД ===");
+        System.out.println("[TURN] Ход перешёл к " + nextPlayer.getName());
+        System.out.println("[MONEY] " + nextPlayer.getName() + " получил +" +
+                nextPlayer.getIncome() + " монет (всего: " + nextPlayer.getMoney() + ")");
+        System.out.println();
+
         updateCurrentPlayer();
         gameState.clearSelection();
         refreshHighlights();
         updateTurnInfo();
+        initializeMap();
     }
 
+    /**
+     * Обновить текущего игрока (только UI)
+     */
     private void updateCurrentPlayer() {
         if (game.getCurrentPlayer() != null) {
             gameState.setCurrentPlayerId(game.getCurrentPlayer().getId());
         }
     }
 
-    private void refreshHighlights() {
-        hexagons.values().forEach(hexagon -> hexagon.setHighlighted(false));
-
-        if (gameState.getSelectedHexagon() != null) {
-            gameState.getSelectedHexagon().setSelected(true);
-        }
-
-        if (gameState.getHighlightedNeighbors() != null) {
-            for (Hex neighbor : gameState.getHighlightedNeighbors()) {
-                Hexagon neighborHex = getHexagonAt(neighbor.getX(), neighbor.getY());
-                if (neighborHex != null && neighbor.getOwnerId() == -1) {
-                    neighborHex.setHighlighted(true);
-                }
-            }
-        }
-    }
-
+    /**
+     * Получить гексагон в точке пикселей (только UI)
+     */
     public Hexagon getHexAtPixel(double mouseX, double mouseY) {
         return hexagons.values().stream()
                 .filter(hexagon -> hexagon.getBoundsInParent().contains(mouseX, mouseY))
@@ -217,6 +349,9 @@ public class GameMapPane extends VBox {
                 .orElse(null);
     }
 
+    /**
+     * Получить гексагон по координатам сетки (только UI)
+     */
     public Hexagon getHexagonAt(int gridX, int gridY) {
         String key = gridX + "," + gridY;
         return hexagons.get(key);

@@ -22,8 +22,11 @@ public class Player {
         this.name = name;
         this.color = color;
         this.money = 10;
-        this.income = 3;
+        this.income = 3; // Начальный доход
         this.ownedHexes = new ArrayList<>();
     }
 
+    public void increaseIncome(int amount) {
+        this.income += amount;
+    }
 }

@@ -50,6 +50,8 @@ public class Hexagon extends Polygon {
 
     public void setColor(Color color) {
         setFill(color);
+        setStroke(Color.BLACK);
+        setStrokeWidth(1.0);
     }
 
     public void setSelected(boolean selected) {
