@@ -24,13 +24,13 @@ public class Unit {
         this.hasActed = false;
 
         switch (level) {
-            case 1: // Пехота
+            case 1:
                 this.actionRadius = 1;
                 break;
-            case 2: // Конница
+            case 2:
                 this.actionRadius = 2;
                 break;
-            case 3: // Артиллерия
+            case 3:
                 this.actionRadius = 3;
                 break;
             default:
@@ -63,12 +63,4 @@ public class Unit {
         return this.level >= defender.getLevel();
     }
 
-    public int getCost() {
-        return switch (level) {
-            case 1 -> 5;
-            case 2 -> 8;
-            case 3 -> 12;
-            default -> 5;
-        };
-    }
 }

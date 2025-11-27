@@ -11,13 +11,13 @@ import java.util.List;
 public class GameTurnManager {
     private Game game;
     private UnitManager unitManager;
-    private int currentTurn;
+    private UnitShop unitShop;
     private boolean isPlayerTurnActive;
 
-    public GameTurnManager(Game game, UnitManager unitManager) {
+    public GameTurnManager(Game game, UnitManager unitManager, UnitShop unitShop) {
         this.game = game;
         this.unitManager = unitManager;
-        this.currentTurn = 1;
+        this.unitShop = unitShop;
         this.isPlayerTurnActive = true;
     }
 
@@ -33,9 +33,6 @@ public class GameTurnManager {
     public void endPlayerTurn() {
         if (!isPlayerTurnActive) return;
         game.nextTurn();
-        if (game.getCurrentPlayerIndex() == 0) {
-            currentTurn++;
-        }
         isPlayerTurnActive = false;
     }
 
@@ -49,12 +46,7 @@ public class GameTurnManager {
     public String getTurnInfo() {
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return "No player";
-        return String.format("Ход %d | Игрок: %s | Деньги: %d | Доход: +%d",
-                currentTurn, currentPlayer.getName(), currentPlayer.getMoney(), currentPlayer.getIncome());
-    }
-
-    public boolean canCurrentPlayerMove() {
-        Player currentPlayer = game.getCurrentPlayer();
-        return currentPlayer != null && unitManager.hasUnits(currentPlayer.getId());
+        return String.format("Игрок: %s | Деньги: %d | Доход: +%d",
+                currentPlayer.getName(), currentPlayer.getMoney(), currentPlayer.getIncome());
     }
 }
