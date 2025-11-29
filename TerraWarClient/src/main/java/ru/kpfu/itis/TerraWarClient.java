@@ -49,7 +49,7 @@ public class TerraWarClient extends Application {
         game.addPlayer(player2);
         game.startGame();
 
-        unitManager = new UnitManager();
+        unitManager = new UnitManager(game);
         unitShop = new UnitShop();
         turnManager = new GameTurnManager(game, unitManager, unitShop);
 

@@ -180,7 +180,8 @@ public class GameActionService {
 
             Player currentPlayer = game.getCurrentPlayer();
             if (currentPlayer != null) {
-                currentPlayer.setIncome(currentPlayer.getIncome() + 1);
+                currentPlayer.setBaseIncome(currentPlayer.getBaseIncome() + 1);
+                currentPlayer.setIncome(currentPlayer.getBaseIncome() - currentPlayer.getUnitUpkeep());
 
                 if (previousOwnerId != -1 && previousOwnerId != unit.getOwnerId()) {
                     for (int i = 0; i < 2; i++) {
@@ -193,8 +194,8 @@ public class GameActionService {
                             }
 
                             if (enemyPlayer != null) {
-                                int newIncome = Math.max(0, enemyPlayer.getIncome() - 1);
-                                enemyPlayer.setIncome(newIncome);
+                                enemyPlayer.setBaseIncome(enemyPlayer.getBaseIncome() - 1);
+                                enemyPlayer.setIncome(enemyPlayer.getBaseIncome() - enemyPlayer.getUnitUpkeep());
                             }
                             break;
                         }

@@ -242,7 +242,7 @@ public class GameMapPane extends VBox {
         }
 
         // Создаем юнит
-        Unit newUnit = unitShop.purchaseUnit(unitManager, currentPlayer.getId(), x, y, placementLevel);
+        Unit newUnit = unitShop. purchaseUnit(unitManager, currentPlayer.getId(), x, y, placementLevel);
 
         // Списание денег
         currentPlayer.setMoney(currentPlayer.getMoney() - placementPrice);

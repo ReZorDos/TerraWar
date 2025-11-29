@@ -25,13 +25,20 @@ public class GameTurnManager {
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer != null) {
             resetPlayerUnitActions(currentPlayer.getId());
-            currentPlayer.setMoney(currentPlayer.getMoney() + currentPlayer.getIncome());
             isPlayerTurnActive = true;
         }
     }
 
     public void endPlayerTurn() {
         if (!isPlayerTurnActive) return;
+
+        checkAndHandleBankruptcy();
+
+        Player currentPlayer = game.getCurrentPlayer();
+        if (currentPlayer != null) {
+            currentPlayer.setMoney(currentPlayer.getMoney() + currentPlayer.getIncome());
+        }
+
         game.nextTurn();
         isPlayerTurnActive = false;
     }
@@ -46,7 +53,15 @@ public class GameTurnManager {
     public String getTurnInfo() {
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return "No player";
-        return String.format("Игрок: %s | Деньги: %d | Доход: +%d",
+        return String.format("Игрок: %s | Деньги: %d | Доход: %d",
                 currentPlayer.getName(), currentPlayer.getMoney(), currentPlayer.getIncome());
     }
+
+    public void checkAndHandleBankruptcy() {
+        Player currentPlayer = game.getCurrentPlayer();
+        if (currentPlayer != null && currentPlayer.getMoney() <= 0) {
+            unitManager.removeAllPlayerUnits(currentPlayer.getId());
+        }
+    }
+
 }
