@@ -7,8 +7,4 @@ import lombok.Setter;
 @Setter
 public class GameState {
     private int currentPlayerId = -1;
-
-    public void clearSelection() {
-
-    }
 }

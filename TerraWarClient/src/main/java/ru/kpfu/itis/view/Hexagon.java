@@ -10,6 +10,8 @@ public class Hexagon extends Polygon {
     private static final double SIZE = 25.0;
     private final int gridX;
     private final int gridY;
+    private boolean highlighted = false;
+    private boolean selected = false;
 
     public Hexagon(int gridX, int gridY) {
         this.gridX = gridX;
@@ -55,6 +57,7 @@ public class Hexagon extends Polygon {
     }
 
     public void setSelected(boolean selected) {
+        this.selected = selected;
         if (selected) {
             setStroke(Color.YELLOW);
             setStrokeWidth(3.0);
@@ -65,6 +68,7 @@ public class Hexagon extends Polygon {
     }
 
     public void setHighlighted(boolean highlighted) {
+        this.highlighted = highlighted;
         if (highlighted) {
             setStroke(Color.LIMEGREEN);
             setStrokeWidth(2.0);
@@ -73,4 +77,5 @@ public class Hexagon extends Polygon {
             setStrokeWidth(1.0);
         }
     }
+
 }
