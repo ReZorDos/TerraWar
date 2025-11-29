@@ -25,6 +25,7 @@ public class GameMapPane extends VBox {
     private final GameMap gameMap;
     private final Game game;
     private final GameState gameState;
+    private final GameMapService gameMapService; // ДОБАВЬТЕ ЭТУ СТРОЧКУ
 
     private final GameActionService gameActionService;
     private final GameTurnManager turnManager;
@@ -53,6 +54,7 @@ public class GameMapPane extends VBox {
         this.turnManager = turnManager;
         this.unitManager = unitManager;
         this.unitShop = unitShop;
+        this.gameMapService = new GameMapService(gameMap); // ДОБАВЬТЕ ЭТУ СТРОЧКУ
         this.buyUnitButton = new Button("Купить юнит");
         this.gameState = new GameState();
         this.hexagons = new HashMap<>();
@@ -231,30 +233,72 @@ public class GameMapPane extends VBox {
 
         Hex hex = gameMap.getHex(x, y);
 
-        if (hex == null || hex.getOwnerId() != currentPlayer.getId()) {
-            showAlert("Ошибка", "Можно размещать юнитов только на своей территории!");
+        if (!canPlaceUnitOnHex(currentPlayer.getId(), x, y)) {
+            showAlert("Ошибка",
+                    "Можно размещать юнитов только на своей территории ИЛИ на соседних с вашей базой гексах!");
             return;
         }
 
-        if (unitManager.getUnitAt(x, y) != null) {
-            showAlert("Ошибка", "На этом гексе уже есть юнит!");
-            return;
+        Unit existingUnit = unitManager.getUnitAt(x, y);
+        if (existingUnit != null) {
+            if (existingUnit.getOwnerId() != currentPlayer.getId()) {
+                Unit tempUnitForCheck = new Unit(-1, currentPlayer.getId(), x, y, placementLevel);
+
+                if (tempUnitForCheck.canDefeat(existingUnit)) {
+                    unitManager.removeUnit(existingUnit.getId());
+                } else {
+                    showAlert("Ошибка",
+                            "Нельзя разместить юнита уровня " + placementLevel +
+                                    " на вражеского юнита уровня " + existingUnit.getLevel() + "!");
+                    return;
+                }
+            } else {
+                // Дружественный юнит - нельзя размещать
+                return;
+            }
         }
 
-        // Создаем юнит
-        Unit newUnit = unitShop. purchaseUnit(unitManager, currentPlayer.getId(), x, y, placementLevel);
+        boolean canActThisTurn = (hex.getOwnerId() == currentPlayer.getId());
+        Unit tempUnit = new Unit(-1, currentPlayer.getId(), x, y, placementLevel);
 
-        // Списание денег
+        gameActionService.captureTerritory(tempUnit, hex);
+
+        Unit newUnit = unitShop.purchaseUnit(unitManager, currentPlayer.getId(), x, y, placementLevel);
+        newUnit.setHasActed(!canActThisTurn);
+
         currentPlayer.setMoney(currentPlayer.getMoney() - placementPrice);
 
-        // Выключаем режим размещения
         disableUnitPlacementMode();
 
-        // Обновляем интерфейс
         updateTurnInfo();
         initializeMap();
+    }
 
-        showAlert("Успех", "Юнит уровня " + placementLevel + " размещен на гексе (" + x + "," + y + ")");
+    private boolean canPlaceUnitOnHex(int playerId, int hexX, int hexY) {
+        Hex targetHex = gameMap.getHex(hexX, hexY);
+        if (targetHex == null) return false;
+
+        if (targetHex.getOwnerId() == playerId) {
+            return true;
+        }
+
+        List<Hex> baseHexes = getPlayerBaseHexes(playerId);
+
+        for (Hex baseHex : baseHexes) {
+            List<Hex> neighbors = gameMapService.getNeighbors(baseHex.getX(), baseHex.getY());
+            for (Hex neighbor : neighbors) {
+                if (neighbor.getX() == hexX && neighbor.getY() == hexY) {
+                    Unit existingUnit = unitManager.getUnitAt(hexX, hexY);
+                    if (existingUnit != null && existingUnit.getOwnerId() != playerId) {
+                        Unit tempUnitForCheck = new Unit(-1, playerId, hexX, hexY, placementLevel);
+                        return tempUnitForCheck.canDefeat(existingUnit);
+                    }
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
 
@@ -408,22 +452,77 @@ public class GameMapPane extends VBox {
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return;
 
-        for (int y = 0; y < gameMap.getHeight(); y++) {
-            for (int x = 0; x < gameMap.getWidth(); x++) {
-                Hex hex = gameMap.getHex(x, y);
-                if (hex != null && hex.getOwnerId() == currentPlayer.getId()) {
-                    // Проверяем, что на hex нет других юнитов
-                    if (unitManager.getUnitAt(x, y) == null) {
-                        Hexagon hexagon = getHexagonAt(x, y);
-                        if (hexagon != null) {
-                            hexagon.setHighlighted(true);
-                            hexagon.setStroke(Color.PURPLE);
-                            hexagon.setStrokeWidth(2.0);
-                        }
+        // Получаем все гексы базы игрока
+        List<Hex> baseHexes = getPlayerBaseHexes(currentPlayer.getId());
+
+        // Получаем все соседние гексы с базой
+        Set<Hex> availableHexes = new HashSet<>();
+
+        // 1. Добавляем гексы самой базы (своя территория)
+        for (Hex baseHex : baseHexes) {
+            availableHexes.add(baseHex);
+
+            // 2. Добавляем всех соседей гексов базы (граничные гексы)
+            List<Hex> neighbors = gameMapService.getNeighbors(baseHex.getX(), baseHex.getY());
+            for (Hex neighbor : neighbors) {
+                // Проверяем, что соседний гекс существует
+                if (neighbor != null) {
+                    Unit existingUnit = unitManager.getUnitAt(neighbor.getX(), neighbor.getY());
+
+                    // Создаем временный юнит для проверки canDefeat
+                    Unit tempUnitForCheck = new Unit(-1, currentPlayer.getId(), neighbor.getX(), neighbor.getY(), placementLevel);
+
+                    // Если на гексе нет юнита ИЛИ есть вражеский юнит, которого можно победить
+                    if (existingUnit == null ||
+                            (existingUnit.getOwnerId() != currentPlayer.getId() &&
+                                    tempUnitForCheck.canDefeat(existingUnit))) {
+                        availableHexes.add(neighbor);
                     }
                 }
             }
         }
+
+        // Подсвечиваем доступные гексы
+        for (Hex hex : availableHexes) {
+            Hexagon hexagon = getHexagonAt(hex.getX(), hex.getY());
+            if (hexagon != null) {
+                boolean isOwnTerritory = hex.getOwnerId() == currentPlayer.getId();
+                Unit existingUnit = unitManager.getUnitAt(hex.getX(), hex.getY());
+                boolean hasEnemyUnit = existingUnit != null && existingUnit.getOwnerId() != currentPlayer.getId();
+
+                if (isOwnTerritory) {
+                    // Своя территория - зеленая подсветка
+                    hexagon.setHighlighted(true);
+                    hexagon.setStroke(Color.LIMEGREEN);
+                    hexagon.setStrokeWidth(2.0);
+                } else if (hasEnemyUnit) {
+                    // Вражеская территория с юнитом - оранжевая подсветка
+                    hexagon.setHighlighted(true);
+                    hexagon.setStroke(Color.ORANGE);
+                    hexagon.setStrokeWidth(3.0);
+                } else {
+                    // Нейтральная/вражеская территория без юнита - фиолетовая подсветка
+                    hexagon.setHighlighted(true);
+                    hexagon.setStroke(Color.PURPLE);
+                    hexagon.setStrokeWidth(2.0);
+                }
+            }
+        }
+    }
+
+    private List<Hex> getPlayerBaseHexes(int playerId) {
+        List<Hex> baseHexes = new ArrayList<>();
+
+        for (int y = 0; y < gameMap.getHeight(); y++) {
+            for (int x = 0; x < gameMap.getWidth(); x++) {
+                Hex hex = gameMap.getHex(x, y);
+                if (hex != null && hex.getOwnerId() == playerId) {
+                    baseHexes.add(hex);
+                }
+            }
+        }
+
+        return baseHexes;
     }
 
     private void clearPlacementHighlights() {

@@ -172,7 +172,7 @@ public class GameActionService {
         return true;
     }
 
-    private void captureTerritory(Unit unit, Hex targetHex) {
+    public void captureTerritory(Unit unit, Hex targetHex) {
         int previousOwnerId = targetHex.getOwnerId();
 
         if (targetHex.getOwnerId() != unit.getOwnerId()) {
