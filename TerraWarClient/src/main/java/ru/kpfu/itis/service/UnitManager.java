@@ -7,13 +7,16 @@ import java.util.*;
 
 @Getter
 public class UnitManager {
+
     private final Map<Integer, List<Unit>> playerUnits;
     private int unitIdCounter = 0;
     private final Game game;
+    private final PlayerService playerService;
 
-    public UnitManager(Game game) {
+    public UnitManager(Game game, PlayerService playerService) {
         this.playerUnits = new HashMap<>();
         this.game = game;
+        this.playerService = playerService;
     }
 
     public Unit createUnit(int ownerId, int hexX, int hexY, int level) {
@@ -23,7 +26,7 @@ public class UnitManager {
 
         Player player = getPlayerById(unit.getOwnerId());
         if (player != null) {
-            player.addUnitUpkeep(unit.getUpkeepCost());
+            playerService.addUnitUpkeep(player, unit.getUpkeepCost());
         }
 
         return unit;
@@ -60,7 +63,7 @@ public class UnitManager {
                 if (unit.getId() == unitId) {
                     Player player = getPlayerById(unit.getOwnerId());
                     if (player != null) {
-                        player.removeUnitUpkeep(unit.getUpkeepCost());
+                        playerService.removeUnitUpkeep(player, unit.getUpkeepCost());
                     }
                     iterator.remove();
                     return;
@@ -83,7 +86,7 @@ public class UnitManager {
         Player player = getPlayerById(playerId);
         if (player != null) {
             for (Unit unit : unitsToRemove) {
-                player.removeUnitUpkeep(unit.getUpkeepCost());
+                playerService.removeUnitUpkeep(player, unit.getUpkeepCost());
             }
         }
 

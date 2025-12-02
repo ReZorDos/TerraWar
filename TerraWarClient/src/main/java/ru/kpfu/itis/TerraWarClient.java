@@ -16,7 +16,10 @@ public class TerraWarClient extends Application {
     private Game game;
     private UnitManager unitManager;
     private UnitShop unitShop;
+    private FarmManager farmManager;
+    private FarmShop farmShop;
     private GameTurnManager turnManager;
+    private PlayerService playerService;
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -28,10 +31,14 @@ public class TerraWarClient extends Application {
         GameMapPane gameMapPane = new GameMapPane(
                 gameMap,
                 gameActionService,
+                playerService,
                 game,
                 turnManager,
                 unitManager,
-                unitShop
+                unitShop,
+                gameMapService,
+                farmManager,
+                farmShop
         );
 
         Scene scene = new Scene(gameMapPane, 900, 650);
@@ -49,8 +56,12 @@ public class TerraWarClient extends Application {
         game.addPlayer(player2);
         game.startGame();
 
-        unitManager = new UnitManager(game);
+        PlayerService playerService = new PlayerService();
+
+        unitManager = new UnitManager(game, playerService);
         unitShop = new UnitShop();
+        farmManager = new FarmManager(game, playerService);
+        farmShop = new FarmShop(farmManager);
         turnManager = new GameTurnManager(game, unitManager, unitShop);
 
         gameMap = new GameMap(10, 10);
@@ -60,12 +71,12 @@ public class TerraWarClient extends Application {
                 gameMap,
                 gameMapService,
                 unitManager,
+                farmManager,
                 game
         );
 
         initializeStartingPositions();
         initializeStartingUnits();
-
     }
 
     private void initializeStartingPositions() {
@@ -76,7 +87,6 @@ public class TerraWarClient extends Application {
         gameMap.getHex(8, 8).setOwnerId(1);
         gameMap.getHex(8, 9).setOwnerId(1);
         gameMap.getHex(7, 8).setOwnerId(1);
-
     }
 
     private void initializeStartingUnits() {
