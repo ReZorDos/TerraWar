@@ -1,10 +1,7 @@
 package ru.kpfu.itis.service;
 
 import lombok.RequiredArgsConstructor;
-import ru.kpfu.itis.model.GameMap;
-import ru.kpfu.itis.model.Hex;
-import ru.kpfu.itis.model.Player;
-import ru.kpfu.itis.model.Unit;
+import ru.kpfu.itis.model.*;
 
 import java.util.*;
 
@@ -14,6 +11,7 @@ public class GameActionService {
     private final GameMap gameMap;
     private final GameMapService gameMapService;
     private final UnitManager unitManager;
+    private final FarmManager farmManager;
     private final Game game;
 
     public List<Hex> calculateActionRadius(Unit unit) {
@@ -50,6 +48,12 @@ public class GameActionService {
 
                 if (currentHex != null) {
                     Unit unitOnTarget = unitManager.getUnitAt(current.x, current.y);
+
+                    Farm farmOnTarget = farmManager.getFarmAt(current.x, current.y);
+
+                    if (farmOnTarget != null && farmOnTarget.getOwnerId() == ownerId) {
+                        continue;
+                    }
 
                     boolean isOwnTerritory = currentHex.getOwnerId() == ownerId;
                     boolean isEnemyTerritory = currentHex.getOwnerId() != -1 &&
@@ -149,7 +153,18 @@ public class GameActionService {
             return false;
         }
 
+        Farm targetFarm = farmManager.getFarmAt(targetHexX, targetHexY);
+        if (targetFarm != null) {
+            if (targetFarm.getOwnerId() == actingUnit.getOwnerId()) {
+                return false;
+            }
+        }
+
         Unit targetUnit = unitManager.getUnitAt(targetHexX, targetHexY);
+
+        if (targetFarm != null && targetFarm.getOwnerId() != actingUnit.getOwnerId()) {
+            farmManager.removeFarm(targetFarm.getId());
+        }
 
         if (targetUnit != null) {
             if (targetUnit.getOwnerId() != actingUnit.getOwnerId()) {
@@ -159,7 +174,6 @@ public class GameActionService {
                     return false;
                 }
             } else {
-                // Дружественный юнит - нельзя ходить
                 return false;
             }
         }

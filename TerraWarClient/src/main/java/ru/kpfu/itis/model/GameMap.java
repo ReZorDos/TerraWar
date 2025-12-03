@@ -37,11 +37,4 @@ public class GameMap {
         return null;
     }
 
-    public Hex setHex(int x, int y, Hex hex) {
-        if (x >= 0 && x < width && y >= 0 && y < height) {
-            grid.get(y).set(x, hex);
-        }
-        return null;
-    }
-
 }

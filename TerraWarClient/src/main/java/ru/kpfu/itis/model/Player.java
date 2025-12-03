@@ -17,7 +17,9 @@ public class Player {
     private int income;
     private int baseIncome;
     private int unitUpkeep;
+    private int farmIncome;
     private List<Hex> ownedHexes;
+    private List<Farm> farms;
 
     public Player(int id, String name, String color) {
         this.id = id;
@@ -26,20 +28,10 @@ public class Player {
         this.money = 50;
         this.baseIncome = 10;
         this.unitUpkeep = 0;
-        this.income = baseIncome - unitUpkeep;
+        this.farmIncome = 0;
+        this.income = baseIncome - unitUpkeep + farmIncome;
         this.ownedHexes = new ArrayList<>();
+        this.farms = new ArrayList<>();
     }
-
-
-    public void addUnitUpkeep(int upkeep) {
-        this.unitUpkeep += upkeep;
-        this.income = baseIncome - unitUpkeep;
-    }
-
-    public void removeUnitUpkeep(int upkeep) {
-        this.unitUpkeep -= upkeep;
-        this.income = baseIncome - unitUpkeep;
-    }
-
 
 }

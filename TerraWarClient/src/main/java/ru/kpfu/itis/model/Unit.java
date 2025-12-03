@@ -23,7 +23,10 @@ public class Unit {
         this.hexY = hexY;
         this.level = level;
         this.hasActed = false;
+        getActionRadiusAndUpkeepCost(level);
+    }
 
+    private void getActionRadiusAndUpkeepCost(int level) {
         switch (level) {
             case 1:
                 this.actionRadius = 1;
