@@ -2,7 +2,6 @@ package ru.kpfu.itis.service;
 
 import lombok.RequiredArgsConstructor;
 import ru.kpfu.itis.model.*;
-
 import java.util.*;
 
 @RequiredArgsConstructor
@@ -13,6 +12,7 @@ public class GameActionService {
     private final UnitManager unitManager;
     private final FarmManager farmManager;
     private final Game game;
+    private final TowerManager towerManager;
 
     public List<Hex> calculateActionRadius(Unit unit) {
         List<Hex> actionArea = new ArrayList<>();
@@ -39,16 +39,13 @@ public class GameActionService {
 
             if (current.distance > 0) {
                 String hexKey = current.x + "," + current.y;
-
                 if (blockedHexes.contains(hexKey)) {
                     continue;
                 }
 
                 Hex currentHex = gameMap.getHex(current.x, current.y);
-
                 if (currentHex != null) {
                     Unit unitOnTarget = unitManager.getUnitAt(current.x, current.y);
-
                     Farm farmOnTarget = farmManager.getFarmAt(current.x, current.y);
 
                     if (farmOnTarget != null && farmOnTarget.getOwnerId() == ownerId) {
@@ -83,10 +80,8 @@ public class GameActionService {
 
                     if (currentIsOwn) {
                         List<Hex> neighbors = gameMapService.getNeighbors(current.x, current.y);
-
                         for (Hex neighbor : neighbors) {
                             String key = neighbor.getX() + "," + neighbor.getY();
-
                             if (!visited.containsKey(key)) {
                                 visited.put(key, current.distance + 1);
                                 queue.add(new HexDistance(
@@ -113,16 +108,13 @@ public class GameActionService {
             if (opponentId == ownerId) continue;
 
             List<Unit> opponentUnits = unitManager.getPlayerUnits(opponentId);
-
             for (Unit opponentUnit : opponentUnits) {
                 int opponentLevel = opponentUnit.getLevel();
-
                 if (opponentLevel > unitLevel) {
                     List<Hex> neighborHexes = gameMapService.getNeighbors(
                             opponentUnit.getHexX(),
                             opponentUnit.getHexY()
                     );
-
                     for (Hex neighborHex : neighborHexes) {
                         String hexKey = neighborHex.getX() + "," + neighborHex.getY();
                         blockedHexes.add(hexKey);
@@ -131,17 +123,34 @@ public class GameActionService {
             }
         }
 
+        blockedHexes.addAll(towerManager.getAllBlockedHexesByTowers(ownerId, unitLevel));
+
         return blockedHexes;
+    }
+
+    public String canUnitMoveToHex(Unit unit, Hex targetHex) {
+        Tower tower = towerManager.getTowerAt(targetHex.getX(), targetHex.getY());
+
+        if (tower != null && tower.getOwnerId() != unit.getOwnerId()) {
+            if (!tower.canUnitPassThrough(unit.getLevel())) {
+                if (tower.getLevel() == 1) {
+                    return "Клетка защищена башней 1 уровня. Юнит уровня " + unit.getLevel() + " не может пройти!";
+                } else if (tower.getLevel() == 2) {
+                    return "Клетка защищена башней 2 уровня. Юнит уровня " + unit.getLevel() + " не может пройти!";
+                }
+            }
+        }
+        return null;
     }
 
     public boolean isHexInRadius(List<Hex> actionHexes, int hexX, int hexY) {
         if (actionHexes == null) {
             return false;
         }
+
         return actionHexes.stream()
                 .anyMatch(hex -> hex.getX() == hexX && hex.getY() == hexY);
     }
-
 
     public boolean actWithUnit(Unit actingUnit, int targetHexX, int targetHexY) {
         if (actingUnit == null || !actingUnit.canAct()) {
@@ -153,6 +162,12 @@ public class GameActionService {
             return false;
         }
 
+        String blockReason = canUnitMoveToHex(actingUnit, targetHex);
+        if (blockReason != null) {
+            System.out.println(blockReason);
+            return false;
+        }
+
         Farm targetFarm = farmManager.getFarmAt(targetHexX, targetHexY);
         if (targetFarm != null) {
             if (targetFarm.getOwnerId() == actingUnit.getOwnerId()) {
@@ -160,8 +175,23 @@ public class GameActionService {
             }
         }
 
-        Unit targetUnit = unitManager.getUnitAt(targetHexX, targetHexY);
+        Tower targetTower = towerManager.getTowerAt(targetHexX, targetHexY);
+        if (targetTower != null && targetTower.getOwnerId() != actingUnit.getOwnerId()) {
+            if (!targetTower.canUnitAttack(actingUnit.getLevel())) {
+                return false;
+            }
+            towerManager.removeTower(targetTower.getId());
+            captureTerritory(actingUnit, targetHex);
+            moveUnit(actingUnit, targetHexX, targetHexY);
+            actingUnit.act();
+            return true;
+        }
 
+        if (targetTower != null && targetTower.getOwnerId() == actingUnit.getOwnerId()) {
+            return false;
+        }
+
+        Unit targetUnit = unitManager.getUnitAt(targetHexX, targetHexY);
         if (targetFarm != null && targetFarm.getOwnerId() != actingUnit.getOwnerId()) {
             farmManager.removeFarm(targetFarm.getId());
         }
@@ -180,9 +210,7 @@ public class GameActionService {
 
         captureTerritory(actingUnit, targetHex);
         moveUnit(actingUnit, targetHexX, targetHexY);
-
         actingUnit.act();
-
         return true;
     }
 
@@ -196,27 +224,28 @@ public class GameActionService {
             if (currentPlayer != null) {
                 currentPlayer.setBaseIncome(currentPlayer.getBaseIncome() + 1);
                 currentPlayer.setIncome(currentPlayer.getBaseIncome() - currentPlayer.getUnitUpkeep());
+            }
 
-                if (previousOwnerId != -1 && previousOwnerId != unit.getOwnerId()) {
-                    for (int i = 0; i < 2; i++) {
-                        if (i == previousOwnerId) {
-                            Player enemyPlayer = null;
-                            if (i == 0) {
-                                enemyPlayer = game.getPlayers().size() > 0 ? game.getPlayers().get(0) : null;
-                            } else {
-                                enemyPlayer = game.getPlayers().size() > 1 ? game.getPlayers().get(1) : null;
-                            }
+            if (previousOwnerId != -1 && previousOwnerId != unit.getOwnerId()) {
+                for (int i = 0; i < 2; i++) {
+                    if (i == previousOwnerId) {
+                        Player enemyPlayer = null;
 
-                            if (enemyPlayer != null) {
-                                enemyPlayer.setBaseIncome(enemyPlayer.getBaseIncome() - 1);
-                                enemyPlayer.setIncome(enemyPlayer.getBaseIncome() - enemyPlayer.getUnitUpkeep());
-                            }
-                            break;
+                        if (i == 0) {
+                            enemyPlayer = game.getPlayers().size() > 0 ? game.getPlayers().get(0) : null;
+                        } else {
+                            enemyPlayer = game.getPlayers().size() > 1 ? game.getPlayers().get(1) : null;
                         }
+
+                        if (enemyPlayer != null) {
+                            enemyPlayer.setBaseIncome(enemyPlayer.getBaseIncome() - 1);
+                            enemyPlayer.setIncome(enemyPlayer.getBaseIncome() - enemyPlayer.getUnitUpkeep());
+                        }
+
+                        break;
                     }
-                } else {
-                    // Захват нейтральной территории
                 }
+            } else {
             }
         }
     }
