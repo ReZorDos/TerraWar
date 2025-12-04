@@ -2,7 +2,6 @@ package ru.kpfu.itis.model;
 
 import lombok.Getter;
 import lombok.Setter;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,6 +16,7 @@ public class Player {
     private int income;
     private int baseIncome;
     private int unitUpkeep;
+    private int towerUpkeep;
     private int farmIncome;
     private List<Hex> ownedHexes;
     private List<Farm> farms;
@@ -28,10 +28,10 @@ public class Player {
         this.money = 50;
         this.baseIncome = 10;
         this.unitUpkeep = 0;
+        this.towerUpkeep = 0;
         this.farmIncome = 0;
-        this.income = baseIncome - unitUpkeep + farmIncome;
+        this.income = baseIncome - unitUpkeep - towerUpkeep + farmIncome;
         this.ownedHexes = new ArrayList<>();
         this.farms = new ArrayList<>();
     }
-
 }

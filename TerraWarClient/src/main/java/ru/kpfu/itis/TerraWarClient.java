@@ -18,6 +18,8 @@ public class TerraWarClient extends Application {
     private UnitShop unitShop;
     private FarmManager farmManager;
     private FarmShop farmShop;
+    private TowerManager towerManager;
+    private TowerShop towerShop;
     private GameTurnManager turnManager;
     private PlayerService playerService;
 
@@ -38,7 +40,9 @@ public class TerraWarClient extends Application {
                 unitShop,
                 gameMapService,
                 farmManager,
-                farmShop
+                farmShop,
+                towerManager,
+                towerShop
         );
 
         Scene scene = new Scene(gameMapPane, 900, 650);
@@ -49,6 +53,7 @@ public class TerraWarClient extends Application {
 
     private void initializeGame() {
         game = new Game();
+
         Player player1 = new Player(0, "Красный игрок", "RED");
         Player player2 = new Player(1, "Синий игрок", "BLUE");
 
@@ -56,23 +61,27 @@ public class TerraWarClient extends Application {
         game.addPlayer(player2);
         game.startGame();
 
-        PlayerService playerService = new PlayerService();
-
+        playerService = new PlayerService();
         unitManager = new UnitManager(game, playerService);
         unitShop = new UnitShop();
         farmManager = new FarmManager(game, playerService);
         farmShop = new FarmShop(farmManager);
-        turnManager = new GameTurnManager(game, unitManager, unitShop);
 
         gameMap = new GameMap(10, 10);
         gameMapService = new GameMapService(gameMap);
+
+        towerManager = new TowerManager(game, playerService, gameMapService);
+        towerShop = new TowerShop(towerManager);
+
+        turnManager = new GameTurnManager(game, unitManager, unitShop, towerManager);
 
         gameActionService = new GameActionService(
                 gameMap,
                 gameMapService,
                 unitManager,
                 farmManager,
-                game
+                game,
+                towerManager
         );
 
         initializeStartingPositions();

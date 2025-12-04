@@ -15,7 +15,6 @@ import ru.kpfu.itis.enums.PlacementMode;
 import ru.kpfu.itis.model.*;
 import ru.kpfu.itis.service.*;
 import ru.kpfu.itis.state.GameState;
-
 import java.util.*;
 
 public class GameMapPane extends VBox {
@@ -24,26 +23,25 @@ public class GameMapPane extends VBox {
     private final Game game;
     private final GameState gameState;
     private final GameMapService gameMapService;
-
     private final GameActionService gameActionService;
     private final PlayerService playerService;
     private final GameTurnManager turnManager;
     private final UnitManager unitManager;
     private final UnitShop unitShop;
-
     private final Map<String, Hexagon> hexagons;
     private final Pane mapPane;
     private final Text turnInfoText;
     private final Text unitCountText;
     private final Button endTurnButton;
     private final Button buyUnitButton;
-
     private final FarmManager farmManager;
     private final FarmShop farmShop;
     private final Button buyFarmButton;
+    private final TowerManager towerManager;
+    private final TowerShop towerShop;
+    private final Button buyTowerButton;
 
     private PlacementMode placementMode = PlacementMode.NONE;
-
     private Unit selectedUnit = null;
     private List<Hex> actionHexes = null;
     private Integer placementLevel = null;
@@ -56,7 +54,9 @@ public class GameMapPane extends VBox {
                        UnitShop unitShop,
                        GameMapService gameMapService,
                        FarmManager farmManager,
-                       FarmShop farmShop) {
+                       FarmShop farmShop,
+                       TowerManager towerManager,
+                       TowerShop towerShop) {
         this.gameMap = gameMap;
         this.gameActionService = gameActionService;
         this.playerService = playerService;
@@ -67,8 +67,12 @@ public class GameMapPane extends VBox {
         this.gameMapService = gameMapService;
         this.farmManager = farmManager;
         this.farmShop = farmShop;
+        this.towerManager = towerManager;
+        this.towerShop = towerShop;
+
         this.buyFarmButton = new Button("Купить ферму");
         this.buyUnitButton = new Button("Купить юнит");
+        this.buyTowerButton = new Button("Купить башню");
         this.gameState = new GameState();
         this.hexagons = new HashMap<>();
         this.mapPane = new Pane();
@@ -80,7 +84,6 @@ public class GameMapPane extends VBox {
         endTurnButton = new Button("Завершить ход");
 
         initializeUI();
-
         initializeMap();
         setupEventHandlers();
         updateTurnInfo();
@@ -91,8 +94,8 @@ public class GameMapPane extends VBox {
         HBox controlPanel = new HBox(20);
         controlPanel.setAlignment(Pos.TOP_LEFT);
         controlPanel.setStyle("-fx-padding: 10; -fx-background-color: #f0f0f0;");
-
-        controlPanel.getChildren().addAll(turnInfoText, unitCountText, buyUnitButton, buyFarmButton, endTurnButton);
+        controlPanel.getChildren().addAll(turnInfoText, unitCountText, buyUnitButton,
+                buyFarmButton, buyTowerButton, endTurnButton);
 
         mapPane.setPrefSize(900, 550);
         turnInfoText.setFont(Font.font("Arial", FontWeight.BOLD, 14));
@@ -127,16 +130,15 @@ public class GameMapPane extends VBox {
 
         drawUnits();
         drawFarms();
+        drawTowers();
     }
 
     private void drawUnits() {
-        // Удаляем только тексты юнитов (цифры), но не тексты ферм (букву "Ф")
         mapPane.getChildren().removeIf(node ->
-                node instanceof Text && !((Text) node).getText().equals("Ф")
+                node instanceof Text && !((Text) node).getText().equals("Ф") && !((Text) node).getText().matches("[БЛ][12]")
         );
 
         List<Unit> allUnits = unitManager.getAllUnits();
-
         for (Unit unit : allUnits) {
             Hexagon hexagon = getHexagonAt(unit.getHexX(), unit.getHexY());
             if (hexagon != null) {
@@ -148,7 +150,6 @@ public class GameMapPane extends VBox {
     private void drawUnitNumber(Hexagon hexagon, Unit unit) {
         Text unitText = new Text(String.valueOf(unit.getLevel()));
         unitText.setFont(Font.font("Arial", FontWeight.BOLD, 18));
-
         switch (unit.getOwnerId()) {
             case 0 -> unitText.setFill(Color.DARKRED);
             case 1 -> unitText.setFill(Color.DARKBLUE);
@@ -161,6 +162,46 @@ public class GameMapPane extends VBox {
         mapPane.getChildren().add(unitText);
     }
 
+    private void drawFarms() {
+        for (Player player : game.getPlayers()) {
+            List<Farm> farms = farmManager.getPlayerFarms(player.getId());
+            for (Farm farm : farms) {
+                Hexagon hexagon = getHexagonAt(farm.getHexX(), farm.getHexY());
+                if (hexagon != null) {
+                    Text farmText = new Text("Ф");
+                    farmText.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+                    farmText.setFill(getPlayerTextColor(player.getId()));
+                    double[] center = Hexagon.getCenterCoords(hexagon.getGridX(), hexagon.getGridY());
+                    farmText.setX(center[0] - 5);
+                    farmText.setY(center[1] + 5);
+                    mapPane.getChildren().add(farmText);
+                }
+            }
+        }
+    }
+
+    private void drawTowers() {
+        mapPane.getChildren().removeIf(node ->
+                node instanceof Text && ((Text) node).getText().matches("[БЛ][12]")
+        );
+
+        for (Player player : game.getPlayers()) {
+            List<Tower> towers = towerManager.getPlayerTowers(player.getId());
+            for (Tower tower : towers) {
+                Hexagon hexagon = getHexagonAt(tower.getHexX(), tower.getHexY());
+                if (hexagon != null) {
+                    Text towerText = new Text("Б" + tower.getLevel());
+                    towerText.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+                    towerText.setFill(getPlayerTextColor(player.getId()));
+                    double[] center = Hexagon.getCenterCoords(hexagon.getGridX(), hexagon.getGridY());
+                    towerText.setX(center[0] - 8);
+                    towerText.setY(center[1] + 5);
+                    mapPane.getChildren().add(towerText);
+                }
+            }
+        }
+    }
+
     private void updateTurnInfo() {
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer != null) {
@@ -168,7 +209,6 @@ public class GameMapPane extends VBox {
                     currentPlayer.getName(),
                     currentPlayer.getMoney(),
                     currentPlayer.getIncome());
-
             turnInfoText.setText(turnInfo);
             turnInfoText.setFill(getPlayerTextColor(currentPlayer.getId()));
 
@@ -194,6 +234,7 @@ public class GameMapPane extends VBox {
         if (ownerId == -1) {
             return Color.LIGHTGRAY;
         }
+
         return switch (ownerId) {
             case 0 -> Color.RED;
             case 1 -> Color.BLUE;
@@ -212,6 +253,7 @@ public class GameMapPane extends VBox {
         endTurnButton.setOnAction(event -> endTurn());
         buyUnitButton.setOnAction(event -> handleBuyUnit());
         buyFarmButton.setOnAction(event -> handleBuyFarm());
+        buyTowerButton.setOnAction(event -> handleBuyTower());
     }
 
     private void handleHexClick(Hexagon clickedHex) {
@@ -225,12 +267,16 @@ public class GameMapPane extends VBox {
             return;
         }
 
+        if (placementMode == PlacementMode.TOWER) {
+            handleTowerPlacement(clickedHex);
+            return;
+        }
+
         Unit unitOnHex = unitManager.getUnitAt(clickedHex.getGridX(), clickedHex.getGridY());
 
         if (unitOnHex != null &&
                 unitOnHex.getOwnerId() == gameState.getCurrentPlayerId() &&
                 unitOnHex.canAct()) {
-
             if (selectedUnit != unitOnHex) {
                 selectUnit(unitOnHex);
             } else {
@@ -241,7 +287,6 @@ public class GameMapPane extends VBox {
 
         if (selectedUnit != null && actionHexes != null &&
                 gameActionService.isHexInRadius(actionHexes, clickedHex.getGridX(), clickedHex.getGridY())) {
-
             boolean success = gameActionService.actWithUnit(
                     selectedUnit,
                     clickedHex.getGridX(),
@@ -253,6 +298,7 @@ public class GameMapPane extends VBox {
                 updateTurnInfo();
                 initializeMap();
             }
+
             return;
         }
 
@@ -265,7 +311,6 @@ public class GameMapPane extends VBox {
 
         int x = clickedHex.getGridX();
         int y = clickedHex.getGridY();
-
         Hex hex = gameMap.getHex(x, y);
 
         if (!canPlaceUnitOnHex(currentPlayer.getId(), x, y)) {
@@ -279,11 +324,15 @@ public class GameMapPane extends VBox {
             return;
         }
 
+        Tower towerOnHex = towerManager.getTowerAt(x, y);
+        if (towerOnHex != null) {
+            return;
+        }
+
         Unit existingUnit = unitManager.getUnitAt(x, y);
         if (existingUnit != null) {
             if (existingUnit.getOwnerId() != currentPlayer.getId()) {
                 Unit tempUnitForCheck = new Unit(-1, currentPlayer.getId(), x, y, placementLevel);
-
                 if (tempUnitForCheck.canDefeat(existingUnit)) {
                     unitManager.removeUnit(existingUnit.getId());
                 } else {
@@ -293,23 +342,19 @@ public class GameMapPane extends VBox {
                     return;
                 }
             } else {
-                // Дружественный юнит - нельзя размещать
                 return;
             }
         }
 
         boolean canActThisTurn = (hex.getOwnerId() == currentPlayer.getId());
         Unit tempUnit = new Unit(-1, currentPlayer.getId(), x, y, placementLevel);
-
         gameActionService.captureTerritory(tempUnit, hex);
 
         Unit newUnit = unitShop.purchaseUnit(unitManager, currentPlayer.getId(), x, y, placementLevel);
         newUnit.setHasActed(!canActThisTurn);
 
         currentPlayer.setMoney(currentPlayer.getMoney() - placementPrice);
-
         disableUnitPlacementMode();
-
         updateTurnInfo();
         initializeMap();
     }
@@ -323,12 +368,16 @@ public class GameMapPane extends VBox {
             return false;
         }
 
+        Tower towerOnHex = towerManager.getTowerAt(hexX, hexY);
+        if (towerOnHex != null) {
+            return false;
+        }
+
         if (targetHex.getOwnerId() == playerId) {
             return true;
         }
 
         List<Hex> baseHexes = getPlayerBaseHexes(playerId);
-
         for (Hex baseHex : baseHexes) {
             List<Hex> neighbors = gameMapService.getNeighbors(baseHex.getX(), baseHex.getY());
             for (Hex neighbor : neighbors) {
@@ -338,6 +387,7 @@ public class GameMapPane extends VBox {
                         Unit tempUnitForCheck = new Unit(-1, playerId, hexX, hexY, placementLevel);
                         return tempUnitForCheck.canDefeat(existingUnit);
                     }
+
                     return true;
                 }
             }
@@ -346,10 +396,8 @@ public class GameMapPane extends VBox {
         return false;
     }
 
-
     private void selectUnit(Unit unit) {
         selectedUnit = unit;
-
         Hexagon hexagon = getHexagonAt(unit.getHexX(), unit.getHexY());
         if (hexagon != null) {
             hexagon.setSelected(true);
@@ -357,7 +405,6 @@ public class GameMapPane extends VBox {
 
         actionHexes = gameActionService.calculateActionRadius(unit);
         refreshHighlights();
-
     }
 
     private void deselectUnit() {
@@ -406,12 +453,13 @@ public class GameMapPane extends VBox {
             disableFarmPlacementMode();
         } else if (placementMode == PlacementMode.UNIT) {
             disableUnitPlacementMode();
+        } else if (placementMode == PlacementMode.TOWER) {
+            disableTowerPlacementMode();
         }
 
         deselectUnit();
         turnManager.endPlayerTurn();
         turnManager.startPlayerTurn();
-
         updateCurrentPlayer();
         refreshHighlights();
         updateTurnInfo();
@@ -442,22 +490,23 @@ public class GameMapPane extends VBox {
 
         if (placementMode == PlacementMode.FARM) {
             disableFarmPlacementMode();
+        } else if (placementMode == PlacementMode.TOWER) {
+            disableTowerPlacementMode();
         }
 
-        // Диалог выбора уровня юнита
         List<Integer> levels = Arrays.asList(1, 2, 3);
         ChoiceDialog<Integer> dialog = new ChoiceDialog<>(1, levels);
         dialog.setTitle("Покупка юнита");
 
-        // Создаем информационный заголовок с ценами
         StringBuilder header = new StringBuilder();
         header.append("Выберите уровень юнита\n");
         header.append("Ваши деньги: ").append(currentPlayer.getMoney()).append(" монет\n\n");
         header.append("Стоимость юнитов:\n");
+
         for (int level : levels) {
             int price = unitShop.getUnitPrice(level);
             header.append("Уровень ").append(level).append(": ").append(price)
-                    .append(" монет ").append("\n");
+                    .append(" монет \n");
         }
 
         dialog.setHeaderText(header.toString());
@@ -474,7 +523,6 @@ public class GameMapPane extends VBox {
                 return;
             }
 
-            // Включаем режим размещения юнита
             enableUnitPlacementMode(level, price);
         }
     }
@@ -482,15 +530,15 @@ public class GameMapPane extends VBox {
     private void enableUnitPlacementMode(int level, int price) {
         if (placementMode == PlacementMode.FARM) {
             disableFarmPlacementMode();
+        } else if (placementMode == PlacementMode.TOWER) {
+            disableTowerPlacementMode();
         }
 
         placementMode = PlacementMode.UNIT;
         placementLevel = level;
         placementPrice = price;
 
-        // Подсвечиваем доступные для размещения гексы
         highlightAvailableHexesForPlacement();
-
         showAlert("Размещение юнита", "Выберите гекс на своей территории для размещения юнита уровня " + level);
     }
 
@@ -503,36 +551,31 @@ public class GameMapPane extends VBox {
 
     private void highlightAvailableHexesForPlacement() {
         clearPlacementHighlights();
-
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return;
 
-        // Получаем все гексы базы игрока
         List<Hex> baseHexes = getPlayerBaseHexes(currentPlayer.getId());
-
-        // Получаем все соседние гексы с базой
         Set<Hex> availableHexes = new HashSet<>();
 
-        // 1. Добавляем гексы самой базы (своя территория)
         for (Hex baseHex : baseHexes) {
             availableHexes.add(baseHex);
 
-            // 2. Добавляем всех соседей гексов базы (граничные гексы)
             List<Hex> neighbors = gameMapService.getNeighbors(baseHex.getX(), baseHex.getY());
             for (Hex neighbor : neighbors) {
-                // Проверяем, что соседний гекс существует
                 if (neighbor != null) {
                     Farm farmOnHex = farmManager.getFarmAt(neighbor.getX(), neighbor.getY());
                     if (farmOnHex != null) {
                         continue;
                     }
 
-                    Unit existingUnit = unitManager.getUnitAt(neighbor.getX(), neighbor.getY());
+                    Tower towerOnHex = towerManager.getTowerAt(neighbor.getX(), neighbor.getY());
+                    if (towerOnHex != null) {
+                        continue;
+                    }
 
-                    // Создаем временный юнит для проверки canDefeat
+                    Unit existingUnit = unitManager.getUnitAt(neighbor.getX(), neighbor.getY());
                     Unit tempUnitForCheck = new Unit(-1, currentPlayer.getId(), neighbor.getX(), neighbor.getY(), placementLevel);
 
-                    // Если на гексе нет юнита ИЛИ есть вражеский юнит, которого можно победить
                     if (existingUnit == null ||
                             (existingUnit.getOwnerId() != currentPlayer.getId() &&
                                     tempUnitForCheck.canDefeat(existingUnit))) {
@@ -542,7 +585,6 @@ public class GameMapPane extends VBox {
             }
         }
 
-        // Подсвечиваем доступные гексы
         for (Hex hex : availableHexes) {
             Hexagon hexagon = getHexagonAt(hex.getX(), hex.getY());
             if (hexagon != null) {
@@ -551,17 +593,14 @@ public class GameMapPane extends VBox {
                 boolean hasEnemyUnit = existingUnit != null && existingUnit.getOwnerId() != currentPlayer.getId();
 
                 if (isOwnTerritory) {
-                    // Своя территория - зеленая подсветка
                     hexagon.setHighlighted(true);
                     hexagon.setStroke(Color.LIMEGREEN);
                     hexagon.setStrokeWidth(2.0);
                 } else if (hasEnemyUnit) {
-                    // Вражеская территория с юнитом - оранжевая подсветка
                     hexagon.setHighlighted(true);
                     hexagon.setStroke(Color.ORANGE);
                     hexagon.setStrokeWidth(3.0);
                 } else {
-                    // Нейтральная/вражеская территория без юнита - фиолетовая подсветка
                     hexagon.setHighlighted(true);
                     hexagon.setStroke(Color.PURPLE);
                     hexagon.setStrokeWidth(2.0);
@@ -572,7 +611,6 @@ public class GameMapPane extends VBox {
 
     private List<Hex> getPlayerBaseHexes(int playerId) {
         List<Hex> baseHexes = new ArrayList<>();
-
         for (int y = 0; y < gameMap.getHeight(); y++) {
             for (int x = 0; x < gameMap.getWidth(); x++) {
                 Hex hex = gameMap.getHex(x, y);
@@ -581,7 +619,6 @@ public class GameMapPane extends VBox {
                 }
             }
         }
-
         return baseHexes;
     }
 
@@ -601,6 +638,8 @@ public class GameMapPane extends VBox {
 
         if (placementMode == PlacementMode.UNIT) {
             disableUnitPlacementMode();
+        } else if (placementMode == PlacementMode.TOWER) {
+            disableTowerPlacementMode();
         }
 
         int price = farmShop.getFarmPrice(currentPlayer.getId());
@@ -608,31 +647,31 @@ public class GameMapPane extends VBox {
         if (!farmShop.canAffordFarm(currentPlayer.getMoney(), currentPlayer.getId())) {
             return;
         }
+
         enableFarmPlacementMode(price);
     }
 
     private void enableFarmPlacementMode(int price) {
         placementMode = PlacementMode.FARM;
         placementPrice = price;
-
         highlightAvailableHexesForFarmPlacement();
-
     }
 
     private void highlightAvailableHexesForFarmPlacement() {
         clearPlacementHighlights();
-
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return;
 
         for (int y = 0; y < gameMap.getHeight(); y++) {
             for (int x = 0; x < gameMap.getWidth(); x++) {
                 Hex hex = gameMap.getHex(x, y);
+
                 if (hex != null && hex.getOwnerId() == currentPlayer.getId()) {
                     Unit unit = unitManager.getUnitAt(x, y);
                     Farm farm = farmManager.getFarmAt(x, y);
+                    Tower tower = towerManager.getTowerAt(x, y);
 
-                    if (unit == null && farm == null) {
+                    if (unit == null && farm == null && tower == null) {
                         Hexagon hexagon = getHexagonAt(x, y);
                         if (hexagon != null) {
                             hexagon.setHighlighted(true);
@@ -651,7 +690,6 @@ public class GameMapPane extends VBox {
 
         int x = clickedHex.getGridX();
         int y = clickedHex.getGridY();
-
         Hex hex = gameMap.getHex(x, y);
 
         if (hex.getOwnerId() != currentPlayer.getId()) {
@@ -667,6 +705,12 @@ public class GameMapPane extends VBox {
         if (existingFarm != null) {
             return;
         }
+
+        Tower existingTower = towerManager.getTowerAt(x, y);
+        if (existingTower != null) {
+            return;
+        }
+
         Farm newFarm = farmShop.purchaseFarm(currentPlayer.getId(), x, y);
         currentPlayer.setMoney(currentPlayer.getMoney() - placementPrice);
 
@@ -681,23 +725,140 @@ public class GameMapPane extends VBox {
         clearPlacementHighlights();
     }
 
-    private void drawFarms() {
-        for (Player player : game.getPlayers()) {
-            List<Farm> farms = farmManager.getPlayerFarms(player.getId());
-            for (Farm farm : farms) {
-                Hexagon hexagon = getHexagonAt(farm.getHexX(), farm.getHexY());
-                if (hexagon != null) {
-                    Text farmText = new Text("Ф");
-                    farmText.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-                    farmText.setFill(getPlayerTextColor(player.getId()));
+    private void handleBuyTower() {
+        Player currentPlayer = game.getCurrentPlayer();
+        if (currentPlayer == null) return;
 
-                    double[] center = Hexagon.getCenterCoords(hexagon.getGridX(), hexagon.getGridY());
-                    farmText.setX(center[0] - 5);
-                    farmText.setY(center[1] + 5);
-                    mapPane.getChildren().add(farmText);
+        if (placementMode == PlacementMode.UNIT) {
+            disableUnitPlacementMode();
+        } else if (placementMode == PlacementMode.FARM) {
+            disableFarmPlacementMode();
+        }
+
+        List<Integer> levels = Arrays.asList(1, 2);
+        ChoiceDialog<Integer> dialog = new ChoiceDialog<>(1, levels);
+        dialog.setTitle("Покупка башни");
+
+        StringBuilder header = new StringBuilder();
+        header.append("Выберите уровень башни\n");
+        header.append("Ваши деньги: ").append(currentPlayer.getMoney()).append(" монет\n\n");
+        header.append("Стоимость башен:\n");
+
+        for (int level : levels) {
+            int price = towerShop.getTowerPrice(currentPlayer.getId(), level);
+            header.append("Уровень ").append(level).append(": ").append(price);
+
+            if (level == 1) {
+                header.append(" монет (блокирует юниты уровня 1)\n");
+            } else {
+                header.append(" монет (блокирует юниты уровня 1-2)\n");
+            }
+        }
+
+        dialog.setHeaderText(header.toString());
+        dialog.setContentText("Уровень:");
+
+        Optional<Integer> result = dialog.showAndWait();
+        if (result.isPresent()) {
+            int level = result.get();
+            int price = towerShop.getTowerPrice(currentPlayer.getId(), level);
+
+            if (!towerShop.canAffordTower(currentPlayer.getMoney(), level, currentPlayer.getId())) {
+                showAlert("Недостаточно денег",
+                        "Башня уровня " + level + " стоит " + price + " монет");
+                return;
+            }
+
+            enableTowerPlacementMode(level, price);
+        }
+    }
+
+    private void enableTowerPlacementMode(int level, int price) {
+        if (placementMode == PlacementMode.UNIT) {
+            disableUnitPlacementMode();
+        } else if (placementMode == PlacementMode.FARM) {
+            disableFarmPlacementMode();
+        }
+
+        placementMode = PlacementMode.TOWER;
+        placementLevel = level;
+        placementPrice = price;
+
+        highlightAvailableHexesForTowerPlacement();
+        showAlert("Размещение башни",
+                "Выберите гекс на своей территории для размещения башни уровня " + level);
+    }
+
+    private void highlightAvailableHexesForTowerPlacement() {
+        clearPlacementHighlights();
+        Player currentPlayer = game.getCurrentPlayer();
+        if (currentPlayer == null) return;
+
+        for (int y = 0; y < gameMap.getHeight(); y++) {
+            for (int x = 0; x < gameMap.getWidth(); x++) {
+                Hex hex = gameMap.getHex(x, y);
+                if (hex != null && hex.getOwnerId() == currentPlayer.getId()) {
+                    Unit unit = unitManager.getUnitAt(x, y);
+                    Farm farm = farmManager.getFarmAt(x, y);
+                    Tower tower = towerManager.getTowerAt(x, y);
+
+                    if (unit == null && farm == null && tower == null) {
+                        Hexagon hexagon = getHexagonAt(x, y);
+                        if (hexagon != null) {
+                            hexagon.setHighlighted(true);
+                            hexagon.setStroke(Color.PURPLE);
+                            hexagon.setStrokeWidth(3.0);
+                        }
+                    }
                 }
             }
         }
+    }
+
+    private void handleTowerPlacement(Hexagon clickedHex) {
+        Player currentPlayer = game.getCurrentPlayer();
+        if (currentPlayer == null) return;
+
+        int x = clickedHex.getGridX();
+        int y = clickedHex.getGridY();
+        Hex hex = gameMap.getHex(x, y);
+
+        if (hex.getOwnerId() != currentPlayer.getId()) {
+            showAlert("Ошибка", "Башню можно ставить только на свою территорию!");
+            return;
+        }
+
+        Unit existingUnit = unitManager.getUnitAt(x, y);
+        if (existingUnit != null) {
+            showAlert("Ошибка", "На этом гексе уже стоит юнит!");
+            return;
+        }
+
+        Farm existingFarm = farmManager.getFarmAt(x, y);
+        if (existingFarm != null) {
+            showAlert("Ошибка", "На этом гексе уже стоит ферма!");
+            return;
+        }
+
+        Tower existingTower = towerManager.getTowerAt(x, y);
+        if (existingTower != null) {
+            showAlert("Ошибка", "На этом гексе уже стоит башня!");
+            return;
+        }
+
+        Tower newTower = towerShop.purchaseTower(currentPlayer.getId(), x, y, placementLevel);
+        currentPlayer.setMoney(currentPlayer.getMoney() - placementPrice);
+
+        disableTowerPlacementMode();
+        updateTurnInfo();
+        initializeMap();
+    }
+
+    private void disableTowerPlacementMode() {
+        placementMode = PlacementMode.NONE;
+        placementLevel = null;
+        placementPrice = null;
+        clearPlacementHighlights();
     }
 
     private void showAlert(String title, String message) {
@@ -707,5 +868,4 @@ public class GameMapPane extends VBox {
         alert.setContentText(message);
         alert.showAndWait();
     }
-
 }
