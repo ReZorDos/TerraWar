@@ -103,3 +103,6 @@ logs/
 ### Documentation generated files ###
 docs/build/
 site/
+
+### Images for game
+**/resources/

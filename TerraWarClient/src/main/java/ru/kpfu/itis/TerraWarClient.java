@@ -45,7 +45,7 @@ public class TerraWarClient extends Application {
                 towerShop
         );
 
-        Scene scene = new Scene(gameMapPane, 900, 650);
+        Scene scene = new Scene(gameMapPane, 900, 700);
         stage.setScene(scene);
         stage.setTitle("TerraWar");
         stage.show();

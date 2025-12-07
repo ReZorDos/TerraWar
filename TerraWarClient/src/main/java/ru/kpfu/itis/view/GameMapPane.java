@@ -4,8 +4,11 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceDialog;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -40,6 +43,8 @@ public class GameMapPane extends VBox {
     private final TowerManager towerManager;
     private final TowerShop towerShop;
     private final Button buyTowerButton;
+
+    private final Map<String, Image> imageCache = new HashMap<>();
 
     private PlacementMode placementMode = PlacementMode.NONE;
     private Unit selectedUnit = null;
@@ -84,6 +89,7 @@ public class GameMapPane extends VBox {
         endTurnButton = new Button("Завершить ход");
 
         initializeUI();
+        loadImages();
         initializeMap();
         setupEventHandlers();
         updateTurnInfo();
@@ -133,73 +139,184 @@ public class GameMapPane extends VBox {
         drawTowers();
     }
 
+    private void loadImages() {
+        try {
+            imageCache.put("unit_1", new Image(getClass().getResourceAsStream("/unit_1.png")));
+            imageCache.put("unit_2", new Image(getClass().getResourceAsStream("/unit_2.png")));
+            imageCache.put("unit_3", new Image(getClass().getResourceAsStream("/unit_3.png")));
+
+            imageCache.put("farm", new Image(getClass().getResourceAsStream("/farm.png")));
+
+            imageCache.put("tower_1", new Image(getClass().getResourceAsStream("/tower_1.png")));
+            imageCache.put("tower_2", new Image(getClass().getResourceAsStream("/tower_2.png")));
+        } catch (Exception e) {
+            System.err.println("Ошибка загрузки изображений: " + e.getMessage());
+        }
+    }
+
     private void drawUnits() {
         mapPane.getChildren().removeIf(node ->
-                node instanceof Text && !((Text) node).getText().equals("Ф") && !((Text) node).getText().matches("[БЛ][12]")
+                (node instanceof StackPane &&
+                        ((StackPane) node).getUserData() != null &&
+                        ((String) ((StackPane) node).getUserData()).startsWith("UNIT_STACK_"))
         );
 
         List<Unit> allUnits = unitManager.getAllUnits();
         for (Unit unit : allUnits) {
-            Hexagon hexagon = getHexagonAt(unit.getHexX(), unit.getHexY());
-            if (hexagon != null) {
-                drawUnitNumber(hexagon, unit);
-            }
+            drawUnitImageWithNumber(unit);
         }
     }
 
-    private void drawUnitNumber(Hexagon hexagon, Unit unit) {
-        Text unitText = new Text(String.valueOf(unit.getLevel()));
-        unitText.setFont(Font.font("Arial", FontWeight.BOLD, 18));
-        switch (unit.getOwnerId()) {
-            case 0 -> unitText.setFill(Color.DARKRED);
-            case 1 -> unitText.setFill(Color.DARKBLUE);
-            default -> unitText.setFill(Color.BLACK);
+    private void drawUnitImageWithNumber(Unit unit) {
+        Hexagon hexagon = getHexagonAt(unit.getHexX(), unit.getHexY());
+        if (hexagon == null) return;
+
+        StackPane stackPane = new StackPane();
+        stackPane.setUserData("UNIT_STACK_" + unit.getHexX() + "_" + unit.getHexY());
+
+        Text levelText = new Text(String.valueOf(unit.getLevel()));
+        levelText.setFont(Font.font("Arial", FontWeight.BOLD, 10));
+        levelText.setFill(Color.WHITE);
+        levelText.setStroke(Color.BLACK);
+        levelText.setStrokeWidth(2.0);
+        stackPane.getChildren().add(levelText);
+
+        Image image = imageCache.get("unit_" + unit.getLevel());
+        if (image != null) {
+            ImageView unitImage = new ImageView(image);
+            double imageSize = Hexagon.SIZE * 1.5;
+            unitImage.setFitWidth(imageSize);
+            unitImage.setFitHeight(imageSize);
+            unitImage.setPreserveRatio(true);
+            unitImage.setUserData("UNIT");
+
+            stackPane.getChildren().add(unitImage);
         }
 
-        double[] center = Hexagon.getCenterCoords(hexagon.getGridX(), hexagon.getGridY());
-        unitText.setX(center[0] - 5);
-        unitText.setY(center[1] + 7);
-        mapPane.getChildren().add(unitText);
+        double[] center = hexagon.getActualCenter();
+        double centerX = center[0];
+        double centerY = center[1];
+
+        double stackWidth = Hexagon.SIZE * Math.sqrt(3) * 2;
+        double stackHeight = Hexagon.SIZE * 2;
+        stackPane.setPrefSize(stackWidth, stackHeight);
+
+        stackPane.setLayoutX(centerX - stackWidth / 2);
+        stackPane.setLayoutY(centerY - stackHeight / 2);
+
+        mapPane.getChildren().add(stackPane);
     }
 
     private void drawFarms() {
+        mapPane.getChildren().removeIf(node ->
+                (node instanceof StackPane &&
+                        ((StackPane) node).getUserData() != null &&
+                        ((String) ((StackPane) node).getUserData()).startsWith("FARM_STACK_"))
+        );
+
         for (Player player : game.getPlayers()) {
             List<Farm> farms = farmManager.getPlayerFarms(player.getId());
             for (Farm farm : farms) {
-                Hexagon hexagon = getHexagonAt(farm.getHexX(), farm.getHexY());
-                if (hexagon != null) {
-                    Text farmText = new Text("Ф");
-                    farmText.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-                    farmText.setFill(getPlayerTextColor(player.getId()));
-                    double[] center = Hexagon.getCenterCoords(hexagon.getGridX(), hexagon.getGridY());
-                    farmText.setX(center[0] - 5);
-                    farmText.setY(center[1] + 5);
-                    mapPane.getChildren().add(farmText);
-                }
+                drawFarmImageWithSymbol(farm, player.getId());
             }
         }
+    }
+
+    private void drawFarmImageWithSymbol(Farm farm, int playerId) {
+        Hexagon hexagon = getHexagonAt(farm.getHexX(), farm.getHexY());
+        if (hexagon == null) return;
+
+        StackPane stackPane = new StackPane();
+        stackPane.setUserData("FARM_STACK_" + farm.getHexX() + "_" + farm.getHexY());
+
+        Text farmSymbol = new Text("F");
+        farmSymbol.setFont(Font.font("Arial", FontWeight.BOLD, 15));
+        farmSymbol.setFill(Color.WHITE);
+        farmSymbol.setStroke(Color.WHITE);
+        farmSymbol.setStrokeWidth(2.0);
+
+        stackPane.getChildren().add(farmSymbol);
+
+        Image image = imageCache.get("farm");
+        if (image != null) {
+            ImageView farmImage = new ImageView(image);
+            double imageSize = Hexagon.SIZE * 1.5;
+            farmImage.setFitWidth(imageSize);
+            farmImage.setFitHeight(imageSize);
+            farmImage.setPreserveRatio(true);
+            farmImage.setUserData("FARM");
+
+            stackPane.getChildren().add(farmImage);
+        }
+
+        double[] center = hexagon.getActualCenter();
+        double centerX = center[0];
+        double centerY = center[1];
+
+        double stackWidth = Hexagon.SIZE * Math.sqrt(3) * 2;
+        double stackHeight = Hexagon.SIZE * 2;
+        stackPane.setPrefSize(stackWidth, stackHeight);
+
+        stackPane.setLayoutX(centerX - stackWidth / 2);
+        stackPane.setLayoutY(centerY - stackHeight / 2);
+
+        mapPane.getChildren().add(stackPane);
     }
 
     private void drawTowers() {
         mapPane.getChildren().removeIf(node ->
-                node instanceof Text && ((Text) node).getText().matches("[БЛ][12]")
+                (node instanceof StackPane &&
+                        ((StackPane) node).getUserData() != null &&
+                        ((String) ((StackPane) node).getUserData()).startsWith("TOWER_STACK_"))
         );
 
         for (Player player : game.getPlayers()) {
             List<Tower> towers = towerManager.getPlayerTowers(player.getId());
             for (Tower tower : towers) {
-                Hexagon hexagon = getHexagonAt(tower.getHexX(), tower.getHexY());
-                if (hexagon != null) {
-                    Text towerText = new Text("Б" + tower.getLevel());
-                    towerText.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-                    towerText.setFill(getPlayerTextColor(player.getId()));
-                    double[] center = Hexagon.getCenterCoords(hexagon.getGridX(), hexagon.getGridY());
-                    towerText.setX(center[0] - 8);
-                    towerText.setY(center[1] + 5);
-                    mapPane.getChildren().add(towerText);
-                }
+                drawTowerImageWithSymbol(tower, player.getId());
             }
         }
+    }
+
+    private void drawTowerImageWithSymbol(Tower tower, int playerId) {
+        Hexagon hexagon = getHexagonAt(tower.getHexX(), tower.getHexY());
+        if (hexagon == null) return;
+
+        StackPane stackPane = new StackPane();
+        stackPane.setUserData("TOWER_STACK_" + tower.getHexX() + "_" + tower.getHexY());
+
+        Text towerSymbol = new Text("Б" + tower.getLevel());
+        towerSymbol.setFont(Font.font("Arial", FontWeight.BOLD, 10));
+        towerSymbol.setFill(Color.WHITE);
+        towerSymbol.setStroke(Color.WHITE);
+        towerSymbol.setStrokeWidth(2.0);
+
+        stackPane.getChildren().add(towerSymbol);
+
+        Image image = imageCache.get("tower_" + tower.getLevel());
+        if (image != null) {
+            ImageView towerImage = new ImageView(image);
+            double imageSize = Hexagon.SIZE * 1.5;
+            towerImage.setFitWidth(imageSize);
+            towerImage.setFitHeight(imageSize);
+            towerImage.setPreserveRatio(true);
+            towerImage.setUserData("TOWER");
+
+            stackPane.getChildren().add(towerImage);
+        }
+
+        double[] center = hexagon.getActualCenter();
+        double centerX = center[0];
+        double centerY = center[1];
+
+        double stackWidth = Hexagon.SIZE * Math.sqrt(3) * 2;
+        double stackHeight = Hexagon.SIZE * 2;
+        stackPane.setPrefSize(stackWidth, stackHeight);
+
+        stackPane.setLayoutX(centerX - stackWidth / 2);
+        stackPane.setLayoutY(centerY - stackHeight / 2);
+
+        mapPane.getChildren().add(stackPane);
     }
 
     private void updateTurnInfo() {
