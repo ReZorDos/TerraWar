@@ -7,11 +7,13 @@ import lombok.Getter;
 @Getter
 public class Hexagon extends Polygon {
 
-    private static final double SIZE = 25.0;
+    public static final double SIZE = 25.0;
     private final int gridX;
     private final int gridY;
     private boolean highlighted = false;
     private boolean selected = false;
+    private static double OFFSET_X = 230;
+    private static double OFFSET_Y = 120;
 
     public Hexagon(int gridX, int gridY) {
         this.gridX = gridX;
@@ -46,8 +48,15 @@ public class Hexagon extends Polygon {
 
     public void positionAtGridCoords() {
         double[] center = getCenterCoords(gridX, gridY);
-        setLayoutX(center[0]);
-        setLayoutY(center[1]);
+        setTranslateX(center[0] + OFFSET_X);
+        setTranslateY(center[1] + OFFSET_Y);
+    }
+
+    public double[] getActualCenter() {
+        return new double[]{
+                getTranslateX(),
+                getTranslateY()
+        };
     }
 
     public void setColor(Color color) {
@@ -77,5 +86,4 @@ public class Hexagon extends Polygon {
             setStrokeWidth(1.0);
         }
     }
-
 }
