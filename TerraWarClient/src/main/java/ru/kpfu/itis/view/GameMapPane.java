@@ -25,6 +25,7 @@ public class GameMapPane extends VBox {
     private final GameActionService gameActionService;
     private final GameTurnManager turnManager;
     private final UnitManager unitManager;
+    private final GameMap gameMap;
     private final Pane mapPane;
     private final Text turnInfoText;
     private final Text unitCountText;
@@ -32,11 +33,9 @@ public class GameMapPane extends VBox {
     private final Button buyUnitButton;
     private final Button buyFarmButton;
     private final Button buyTowerButton;
-
     private final MapRenderer mapRenderer;
     private final PlacementController placementController;
     private final ImageCache imageCache;
-
     private Unit selectedUnit = null;
     private List<Hex> actionHexes = null;
 
@@ -50,11 +49,11 @@ public class GameMapPane extends VBox {
                        FarmShop farmShop,
                        TowerManager towerManager,
                        TowerShop towerShop) {
+        this.gameMap = gameMap;
         this.gameActionService = gameActionService;
         this.game = game;
         this.turnManager = turnManager;
         this.unitManager = unitManager;
-
         this.buyFarmButton = new Button("Купить ферму");
         this.buyUnitButton = new Button("Купить юнит");
         this.buyTowerButton = new Button("Купить башню");
@@ -104,13 +103,10 @@ public class GameMapPane extends VBox {
                     }
                 }
         );
-
         gameState.setCurrentPlayerId(game.getCurrentPlayer().getId());
-
         turnInfoText = new Text();
         unitCountText = new Text();
         endTurnButton = new Button("Завершить ход");
-
         initializeUI();
         initializeMap();
         setupEventHandlers();
@@ -124,11 +120,9 @@ public class GameMapPane extends VBox {
         controlPanel.setStyle("-fx-padding: 10; -fx-background-color: #f0f0f0;");
         controlPanel.getChildren().addAll(turnInfoText, unitCountText, buyUnitButton,
                 buyFarmButton, buyTowerButton, endTurnButton);
-
         mapPane.setPrefSize(900, 550);
         turnInfoText.setFont(Font.font("Arial", FontWeight.BOLD, 14));
         unitCountText.setFont(Font.font("Arial", FontWeight.BOLD, 12));
-
         this.getChildren().addAll(controlPanel, mapPane);
     }
 
@@ -145,7 +139,6 @@ public class GameMapPane extends VBox {
                     currentPlayer.getIncome());
             turnInfoText.setText(turnInfo);
             turnInfoText.setFill(getPlayerTextColor(currentPlayer.getId()));
-
             int unitCount = unitManager.getPlayerUnits(currentPlayer.getId()).size();
             unitCountText.setText("Юниты: " + unitCount + " | Фермы: " + currentPlayer.getFarms().size());
             unitCountText.setFill(getPlayerTextColor(currentPlayer.getId()));
@@ -162,26 +155,24 @@ public class GameMapPane extends VBox {
 
     private void setupEventHandlers() {
         mapPane.setOnMouseClicked(event -> {
-            Hexagon clickedHex = getHexAtPixel(event.getX(), event.getY());
+            TexturedHexagon clickedHex = getHexAtPixel(event.getX(), event.getY());
             if (clickedHex != null) {
                 handleHexClick(clickedHex);
             }
         });
-
         endTurnButton.setOnAction(event -> endTurn());
         buyUnitButton.setOnAction(event -> placementController.handleBuyUnit());
         buyFarmButton.setOnAction(event -> placementController.handleBuyFarm());
         buyTowerButton.setOnAction(event -> placementController.handleBuyTower());
     }
 
-    private void handleHexClick(Hexagon clickedHex) {
+    private void handleHexClick(TexturedHexagon clickedHex) {
         if (placementController.isPlacementActive()) {
             placementController.handleHexClick(clickedHex);
             return;
         }
 
         Unit unitOnHex = unitManager.getUnitAt(clickedHex.getGridX(), clickedHex.getGridY());
-
         if (unitOnHex != null &&
                 unitOnHex.getOwnerId() == gameState.getCurrentPlayerId() &&
                 unitOnHex.canAct()) {
@@ -200,13 +191,11 @@ public class GameMapPane extends VBox {
                     clickedHex.getGridX(),
                     clickedHex.getGridY()
             );
-
             if (success) {
                 deselectUnit();
                 updateTurnInfo();
                 initializeMap();
             }
-
             return;
         }
 
@@ -215,7 +204,7 @@ public class GameMapPane extends VBox {
 
     private void selectUnit(Unit unit) {
         selectedUnit = unit;
-        Hexagon hexagon = mapRenderer.getHexagonAt(unit.getHexX(), unit.getHexY());
+        TexturedHexagon hexagon = mapRenderer.getHexagonAt(unit.getHexX(), unit.getHexY());
         if (hexagon != null) {
             hexagon.setSelected(true);
         }
@@ -226,7 +215,7 @@ public class GameMapPane extends VBox {
 
     private void deselectUnit() {
         if (selectedUnit != null) {
-            Hexagon hexagon = mapRenderer.getHexagonAt(selectedUnit.getHexX(), selectedUnit.getHexY());
+            TexturedHexagon hexagon = mapRenderer.getHexagonAt(selectedUnit.getHexX(), selectedUnit.getHexY());
             if (hexagon != null) {
                 hexagon.setSelected(false);
             }
@@ -234,7 +223,6 @@ public class GameMapPane extends VBox {
 
         selectedUnit = null;
         actionHexes = null;
-
         if (!placementController.isPlacementActive()) {
             refreshHighlights();
         }
@@ -245,20 +233,24 @@ public class GameMapPane extends VBox {
             return;
         }
 
+        // ✅ ИСПРАВЛЕНИЕ: Трогаем только существующие гексы (не null)
         mapRenderer.getHexagons().values().forEach(hexagon -> {
-            hexagon.setHighlighted(false);
-            hexagon.setSelected(false);
+            Hex hexData = gameMap.getHex(hexagon.getGridX(), hexagon.getGridY());
+            if (hexData != null) {  // Только для существующих гексов
+                hexagon.setHighlighted(false);
+                hexagon.setSelected(false);
+            }
         });
 
         if (selectedUnit != null && actionHexes != null) {
             for (Hex hex : actionHexes) {
-                Hexagon hexagon = mapRenderer.getHexagonAt(hex.getX(), hex.getY());
+                TexturedHexagon hexagon = mapRenderer.getHexagonAt(hex.getX(), hex.getY());
                 if (hexagon != null) {
                     hexagon.setHighlighted(true);
                 }
             }
 
-            Hexagon unitHex = mapRenderer.getHexagonAt(selectedUnit.getHexX(), selectedUnit.getHexY());
+            TexturedHexagon unitHex = mapRenderer.getHexagonAt(selectedUnit.getHexX(), selectedUnit.getHexY());
             if (unitHex != null) {
                 unitHex.setSelected(true);
             }
@@ -282,11 +274,11 @@ public class GameMapPane extends VBox {
         }
     }
 
-    public Hexagon getHexAtPixel(double mouseX, double mouseY) {
+    public TexturedHexagon getHexAtPixel(double mouseX, double mouseY) {
         return mapRenderer.getHexAtPixel(mouseX, mouseY);
     }
 
-    public Hexagon getHexagonAt(int gridX, int gridY) {
+    public TexturedHexagon getHexagonAt(int gridX, int gridY) {
         return mapRenderer.getHexagonAt(gridX, gridY);
     }
 
