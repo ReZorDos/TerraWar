@@ -3,9 +3,13 @@ package ru.kpfu.itis.view;
 import javafx.scene.control.ChoiceDialog;
 import javafx.scene.paint.Color;
 import ru.kpfu.itis.enums.PlacementMode;
-import ru.kpfu.itis.model.*;
+import ru.kpfu.itis.model.Farm;
+import ru.kpfu.itis.model.GameMap;
+import ru.kpfu.itis.model.Hex;
+import ru.kpfu.itis.model.Player;
+import ru.kpfu.itis.model.Tower;
+import ru.kpfu.itis.model.Unit;
 import ru.kpfu.itis.service.*;
-
 import java.util.*;
 import java.util.function.BiConsumer;
 
@@ -77,7 +81,7 @@ public class PlacementController {
         }
     }
 
-    public boolean handleHexClick(Hexagon clickedHex) {
+    public boolean handleHexClick(TexturedHexagon clickedHex) {
         return switch (placementMode) {
             case FARM -> {
                 handleFarmPlacement(clickedHex);
@@ -228,7 +232,7 @@ public class PlacementController {
         uiCallbacks.refreshHighlights();
     }
 
-    private void handleUnitPlacement(Hexagon clickedHex) {
+    private void handleUnitPlacement(TexturedHexagon clickedHex) {
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return;
 
@@ -315,7 +319,7 @@ public class PlacementController {
         handleBuyFarmPlacement(price);
     }
 
-    private void handleFarmPlacement(Hexagon clickedHex) {
+    private void handleFarmPlacement(TexturedHexagon clickedHex) {
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return;
 
@@ -362,7 +366,7 @@ public class PlacementController {
                 "Выберите гекс на своей территории для размещения башни уровня " + level);
     }
 
-    private void handleTowerPlacement(Hexagon clickedHex) {
+    private void handleTowerPlacement(TexturedHexagon clickedHex) {
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return;
 
@@ -406,7 +410,7 @@ public class PlacementController {
         uiCallbacks.refreshHighlights();
     }
 
-    private void highlightAvailableHexesForPlacement(BiConsumer<Hexagon, Player> highlightStrategy) {
+    private void highlightAvailableHexesForPlacement(BiConsumer<TexturedHexagon, Player> highlightStrategy) {
         clearPlacementHighlights();
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return;
@@ -415,7 +419,7 @@ public class PlacementController {
             for (int x = 0; x < gameMap.getWidth(); x++) {
                 Hex hex = gameMap.getHex(x, y);
                 if (hex != null && hex.getOwnerId() == currentPlayer.getId()) {
-                    Hexagon hexagon = mapRenderer.getHexagonAt(x, y);
+                    TexturedHexagon hexagon = mapRenderer.getHexagonAt(x, y);
                     if (hexagon != null) {
                         highlightStrategy.accept(hexagon, currentPlayer);
                     }
@@ -424,7 +428,7 @@ public class PlacementController {
         }
     }
 
-    private void highlightUnitPlacementHex(Hexagon hexagon, Player currentPlayer) {
+    private void highlightUnitPlacementHex(TexturedHexagon hexagon, Player currentPlayer) {
         Hex hex = gameMap.getHex(hexagon.getGridX(), hexagon.getGridY());
         if (hex == null) return;
 
@@ -470,7 +474,7 @@ public class PlacementController {
         }
     }
 
-    private void highlightFarmPlacementHex(Hexagon hexagon, Player currentPlayer) {
+    private void highlightFarmPlacementHex(TexturedHexagon hexagon, Player currentPlayer) {
         if (unitManager.getUnitAt(hexagon.getGridX(), hexagon.getGridY()) != null) return;
         if (farmManager.getFarmAt(hexagon.getGridX(), hexagon.getGridY()) != null) return;
         if (towerManager.getTowerAt(hexagon.getGridX(), hexagon.getGridY()) != null) return;
@@ -480,7 +484,7 @@ public class PlacementController {
         hexagon.setStrokeWidth(3.0);
     }
 
-    private void highlightTowerPlacementHex(Hexagon hexagon, Player currentPlayer) {
+    private void highlightTowerPlacementHex(TexturedHexagon hexagon, Player currentPlayer) {
         if (unitManager.getUnitAt(hexagon.getGridX(), hexagon.getGridY()) != null) return;
         if (farmManager.getFarmAt(hexagon.getGridX(), hexagon.getGridY()) != null) return;
         if (towerManager.getTowerAt(hexagon.getGridX(), hexagon.getGridY()) != null) return;

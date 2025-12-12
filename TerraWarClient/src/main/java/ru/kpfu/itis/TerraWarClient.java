@@ -3,10 +3,13 @@ package ru.kpfu.itis;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import ru.kpfu.itis.enums.MapType;
 import ru.kpfu.itis.model.GameMap;
 import ru.kpfu.itis.model.Player;
 import ru.kpfu.itis.service.*;
+import ru.kpfu.itis.service.MapFactory;
 import ru.kpfu.itis.view.GameMapPane;
+import java.util.Random;
 
 public class TerraWarClient extends Application {
 
@@ -67,7 +70,9 @@ public class TerraWarClient extends Application {
         farmManager = new FarmManager(game, playerService);
         farmShop = new FarmShop(farmManager);
 
-        gameMap = new GameMap(10, 10);
+        MapType[] mapTypes = MapType.values();
+        MapType randomMapType = mapTypes[new Random().nextInt(mapTypes.length)];
+        gameMap = MapFactory.getRandomMap();
         gameMapService = new GameMapService(gameMap);
 
         towerManager = new TowerManager(game, playerService, gameMapService);
@@ -84,18 +89,7 @@ public class TerraWarClient extends Application {
                 towerManager
         );
 
-        initializeStartingPositions();
         initializeStartingUnits();
-    }
-
-    private void initializeStartingPositions() {
-        gameMap.getHex(1, 1).setOwnerId(0);
-        gameMap.getHex(2, 1).setOwnerId(0);
-        gameMap.getHex(1, 2).setOwnerId(0);
-
-        gameMap.getHex(8, 8).setOwnerId(1);
-        gameMap.getHex(8, 9).setOwnerId(1);
-        gameMap.getHex(7, 8).setOwnerId(1);
     }
 
     private void initializeStartingUnits() {
