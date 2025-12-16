@@ -2,14 +2,13 @@ package ru.kpfu.itis;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-import ru.kpfu.itis.enums.MapType;
 import ru.kpfu.itis.model.GameMap;
 import ru.kpfu.itis.model.Player;
 import ru.kpfu.itis.service.*;
 import ru.kpfu.itis.service.MapFactory;
 import ru.kpfu.itis.view.GameMapPane;
-import java.util.Random;
 
 public class TerraWarClient extends Application {
 
@@ -48,7 +47,8 @@ public class TerraWarClient extends Application {
                 towerShop
         );
 
-        Scene scene = new Scene(gameMapPane, 900, 700);
+        Scene scene = new Scene(gameMapPane, 1280, 860);
+        scene.setFill(Color.web("#2b2b2b"));
         stage.setScene(scene);
         stage.setTitle("TerraWar");
         stage.show();
@@ -70,8 +70,6 @@ public class TerraWarClient extends Application {
         farmManager = new FarmManager(game, playerService);
         farmShop = new FarmShop(farmManager);
 
-        MapType[] mapTypes = MapType.values();
-        MapType randomMapType = mapTypes[new Random().nextInt(mapTypes.length)];
         gameMap = MapFactory.getRandomMap();
         gameMapService = new GameMapService(gameMap);
 
