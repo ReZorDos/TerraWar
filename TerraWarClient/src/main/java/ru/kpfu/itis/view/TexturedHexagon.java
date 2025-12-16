@@ -8,8 +8,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Polygon;
 
 /**
- * Hexagon with textured background using Canvas + visible borders.
- * FIXED: Border is visible and positioned correctly at hexagon edges
+ * Hexagon with textured background using Canvas and visible borders.
  */
 public class TexturedHexagon extends Pane {
     public static final double SIZE = Hexagon.SIZE;
@@ -43,24 +42,18 @@ public class TexturedHexagon extends Pane {
         this.setMinSize(texWidth, texHeight);
         this.setStyle("-fx-padding: 0;");
 
-        // === CANVAS для рисования текстуры ===
         textureCanvas = new Canvas(texWidth, texHeight);
-        textureCanvas.setLayoutX(0);
-        textureCanvas.setLayoutY(0);
-
         drawTextureOnCanvas();
 
-        // === CLIP SHAPE (обрезаем по форме гекса) ===
         clipShape = createHexagonPolygon();
         clipShape.setTranslateX(texWidth / 2);
         clipShape.setTranslateY(texHeight / 2);
         this.setClip(clipShape);
 
-        // === BORDER (чёрная граница гекса) ===
         border = createHexagonPolygon();
         border.setFill(Color.TRANSPARENT);
-        border.setStroke(Color.BLACK);
-        border.setStrokeWidth(1.5);
+        border.setStroke(Color.TRANSPARENT);
+        border.setStrokeWidth(0.0);
         border.setTranslateX(texWidth / 2);
         border.setTranslateY(texHeight / 2);
 
@@ -69,17 +62,11 @@ public class TexturedHexagon extends Pane {
         positionAtGridCoords();
     }
 
-    /**
-     * Рисует текстуру на Canvas - полностью заполняет его
-     */
     private void drawTextureOnCanvas() {
         GraphicsContext gc = textureCanvas.getGraphicsContext2D();
-
         if (baseTextureImage != null && !baseTextureImage.isError()) {
-            // ✅ Рисуем изображение, растягивая его на весь размер Canvas
             gc.drawImage(baseTextureImage, 0, 0, texWidth, texHeight);
         } else {
-            // Fallback если картинка не загрузилась
             gc.setFill(Color.TAN);
             gc.fillRect(0, 0, texWidth, texHeight);
         }
@@ -87,7 +74,6 @@ public class TexturedHexagon extends Pane {
 
     private Polygon createHexagonPolygon() {
         Polygon polygon = new Polygon();
-        // ✅ Вершины гекса центрированы в (0,0)
         for (int i = 0; i < 6; i++) {
             double angle = 2 * Math.PI / 6 * (i + 0.5);
             double x = SIZE * Math.cos(angle);
@@ -97,19 +83,12 @@ public class TexturedHexagon extends Pane {
         return polygon;
     }
 
-    /**
-     * Позиционирует Pane так, чтобы ЕГО ЦЕНТР совпадал с центром гекса
-     */
     public void positionAtGridCoords() {
         double[] center = Hexagon.getCenterCoords(gridX, gridY);
-        // ✅ Смещаем Pane так, чтобы его центр был в точке центра гекса
         this.setTranslateX(center[0] + OFFSET_X - texWidth / 2);
         this.setTranslateY(center[1] + OFFSET_Y - texHeight / 2);
     }
 
-    /**
-     * Возвращает истинный центр гекса (центр Pane)
-     */
     public double[] getActualCenter() {
         return new double[]{
                 getTranslateX() + texWidth / 2,
@@ -126,7 +105,7 @@ public class TexturedHexagon extends Pane {
     }
 
     public void setOwner(int ownerId, Image redOverlay, Image blueOverlay) {
-        // Может быть использовано в будущем для оверлеев
+        // Reserved for future overlay functionality
     }
 
     public void setHighlighted(boolean highlighted) {
@@ -135,8 +114,13 @@ public class TexturedHexagon extends Pane {
             border.setStroke(Color.LIMEGREEN);
             border.setStrokeWidth(2.5);
         } else {
-            border.setStroke(selected ? Color.YELLOW : Color.BLACK);
-            border.setStrokeWidth(selected ? 3.0 : 1.5);
+            if (selected) {
+                border.setStroke(Color.YELLOW);
+                border.setStrokeWidth(3.0);
+            } else {
+                border.setStroke(Color.TRANSPARENT);
+                border.setStrokeWidth(0.0);
+            }
         }
     }
 
@@ -153,8 +137,8 @@ public class TexturedHexagon extends Pane {
             border.setStroke(Color.LIMEGREEN);
             border.setStrokeWidth(2.5);
         } else {
-            border.setStroke(Color.BLACK);
-            border.setStrokeWidth(1.5);
+            border.setStroke(Color.TRANSPARENT);
+            border.setStrokeWidth(0.0);
         }
     }
 
