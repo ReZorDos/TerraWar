@@ -13,11 +13,11 @@ public class TowerManager {
     private final PlayerService playerService;
     private final GameMapService gameMapService;
 
-    private static final int TOWER_LEVEL_1_BASE_COST = 18;
-    private static final int TOWER_LEVEL_2_BASE_COST = 40;
+    private static final int TOWER_LEVEL_1_BASE_COST = 15;
+    private static final int TOWER_LEVEL_2_BASE_COST = 25;
 
-    private static final int TOWER_LEVEL_1_UPKEEP = 2;
-    private static final int TOWER_LEVEL_2_UPKEEP = 4;
+    private static final int TOWER_LEVEL_1_UPKEEP = 5;
+    private static final int TOWER_LEVEL_2_UPKEEP = 12;
 
     public TowerManager(Game game, PlayerService playerService, GameMapService gameMapService) {
         this.playerTowers = new HashMap<>();
@@ -119,7 +119,9 @@ public class TowerManager {
     public Set<String> getAllBlockedHexesByTowers(int unitOwnerId, int unitLevel) {
         Set<String> allBlockedHexes = new HashSet<>();
 
-        for (int opponentId = 0; opponentId < 2; opponentId++) {
+        // Проверяем башни всех противников (не только первых 2)
+        for (Player player : game.getPlayers()) {
+            int opponentId = player.getId();
             if (opponentId == unitOwnerId) continue;
 
             List<Tower> opponentTowers = getPlayerTowers(opponentId);

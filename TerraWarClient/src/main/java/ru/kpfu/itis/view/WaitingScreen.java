@@ -25,7 +25,7 @@ public class WaitingScreen extends VBox {
         statusLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
         statusLabel.setTextFill(Color.WHITE);
 
-        playersLabel = new Label("Подключено: 0/2");
+        playersLabel = new Label("Подключено: 0/4");
         playersLabel.setFont(Font.font("Arial", 14));
         playersLabel.setTextFill(Color.LIGHTGRAY);
 
@@ -35,8 +35,8 @@ public class WaitingScreen extends VBox {
     public void updatePlayers(List<String> players) {
         if (players != null) {
             Platform.runLater(() -> {
-                playersLabel.setText("Подключено: " + players.size() + "/2");
-                if (players.size() >= 2) {
+                playersLabel.setText("Подключено: " + players.size() + "/4");
+                if (players.size() >= 4) {
                     statusLabel.setText("Все игроки подключены! Начинаем игру...");
                     statusLabel.setTextFill(Color.LIGHTGREEN);
                 }

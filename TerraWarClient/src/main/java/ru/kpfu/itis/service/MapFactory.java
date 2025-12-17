@@ -34,8 +34,11 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, peninsula);
-        setStartingZones(map, new int[][]{{5, 4}, {5, 5}, {6, 4}, {6, 5}, {6, 6}},
-                new int[][]{{13, 12}, {13, 13}, {12, 13}, {12, 12}, {13, 11}});
+        setStartingZones(map,
+                new int[][]{{5, 4}, {5, 5}, {6, 4}, {6, 5}, {6, 6}},
+                new int[][]{{13, 12}, {13, 13}, {12, 13}, {12, 12}, {13, 11}},
+                new int[][]{{5, 13}, {5, 14}, {6, 13}, {6, 14}, {6, 15}},
+                new int[][]{{13, 4}, {13, 5}, {12, 4}, {12, 5}, {13, 6}});
         return map;
     }
 
@@ -67,8 +70,11 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, sShaped);
-        setStartingZones(map, new int[][]{{5, 4}, {6, 4}, {5, 5}, {6, 5}, {5, 6}},
-                new int[][]{{14, 11}, {15, 11}, {14, 10}, {15, 10}, {13, 10}});
+        setStartingZones(map, 
+                new int[][]{{5, 4}, {6, 4}, {5, 5}, {6, 5}, {5, 6}},
+                new int[][]{{14, 11}, {15, 11}, {14, 10}, {15, 10}, {13, 10}},
+                new int[][]{{5, 13}, {6, 13}, {5, 14}, {6, 14}, {5, 15}},
+                new int[][]{{14, 4}, {15, 4}, {14, 5}, {15, 5}, {13, 5}});
         return map;
     }
 
@@ -100,8 +106,11 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, star);
-        setStartingZones(map, new int[][]{{4, 7}, {5, 6}, {4, 6}, {5, 7}, {5, 8}},
-                new int[][]{{14, 7}, {13, 8}, {14, 8}, {13, 7}, {13, 6}});
+        setStartingZones(map, 
+                new int[][]{{4, 7}, {5, 6}, {4, 6}, {5, 7}, {5, 8}},
+                new int[][]{{14, 7}, {13, 8}, {14, 8}, {13, 7}, {13, 6}},
+                new int[][]{{9, 3}, {9, 4}, {8, 4}, {10, 4}, {9, 5}},
+                new int[][]{{9, 11}, {9, 12}, {8, 12}, {10, 12}, {9, 13}});
         return map;
     }
 
@@ -133,8 +142,11 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, tShaped);
-        setStartingZones(map, new int[][]{{5, 4}, {5, 5}, {6, 4}, {4, 4}, {6, 5}},
-                new int[][]{{14, 14}, {14, 15}, {13, 14}, {15, 14}, {13, 15}});
+        setStartingZones(map, 
+                new int[][]{{5, 4}, {5, 5}, {6, 4}, {4, 4}, {6, 5}},
+                new int[][]{{14, 14}, {14, 15}, {13, 14}, {15, 14}, {13, 15}},
+                new int[][]{{5, 13}, {5, 14}, {6, 13}, {4, 13}, {6, 14}},
+                new int[][]{{14, 4}, {14, 5}, {13, 4}, {15, 4}, {13, 5}});
         return map;
     }
 
@@ -166,8 +178,11 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, cShaped);
-        setStartingZones(map, new int[][]{{4, 4}, {5, 4}, {4, 5}, {5, 5}, {4, 6}},
-                new int[][]{{14, 11}, {14, 12}, {13, 11}, {13, 12}, {14, 10}});
+        setStartingZones(map, 
+                new int[][]{{4, 4}, {5, 4}, {4, 5}, {5, 5}, {4, 6}},
+                new int[][]{{14, 11}, {14, 12}, {13, 11}, {13, 12}, {14, 10}},
+                new int[][]{{4, 13}, {5, 13}, {4, 14}, {5, 14}, {4, 15}},
+                new int[][]{{14, 4}, {14, 5}, {13, 4}, {13, 5}, {14, 6}});
         return map;
     }
 
@@ -191,28 +206,61 @@ public class MapFactory {
     }
 
     /**
-     * Установка стартовых зон для двух игроков
+     * Установка стартовых зон для четырех игроков
      * @param map Карта игры
      * @param player0Positions Стартовые позиции для Player 0 (RED)
      * @param player1Positions Стартовые позиции для Player 1 (BLUE)
+     * @param player2Positions Стартовые позиции для Player 2 (GREEN)
+     * @param player3Positions Стартовые позиции для Player 3 (YELLOW)
      */
-    private static void setStartingZones(GameMap map, int[][] player0Positions, int[][] player1Positions) {
+    private static void setStartingZones(GameMap map, int[][] player0Positions, int[][] player1Positions, 
+                                         int[][] player2Positions, int[][] player3Positions) {
         // Player 0 (RED) - ID = 0
-        for (int[] pos : player0Positions) {
-            int x = pos[0];
-            int y = pos[1];
+        for (int i = 0; i < player0Positions.length; i++) {
+            int x = player0Positions[i][0];
+            int y = player0Positions[i][1];
             Hex hex = map.getHex(x, y);
             if (hex != null) {
                 hex.setOwnerId(0);
+                if (i == 0) { // Первая позиция - столица
+                    hex.setCapital(true);
+                }
             }
         }
         // Player 1 (BLUE) - ID = 1
-        for (int[] pos : player1Positions) {
-            int x = pos[0];
-            int y = pos[1];
+        for (int i = 0; i < player1Positions.length; i++) {
+            int x = player1Positions[i][0];
+            int y = player1Positions[i][1];
             Hex hex = map.getHex(x, y);
             if (hex != null) {
                 hex.setOwnerId(1);
+                if (i == 0) { // Первая позиция - столица
+                    hex.setCapital(true);
+                }
+            }
+        }
+        // Player 2 (GREEN) - ID = 2
+        for (int i = 0; i < player2Positions.length; i++) {
+            int x = player2Positions[i][0];
+            int y = player2Positions[i][1];
+            Hex hex = map.getHex(x, y);
+            if (hex != null) {
+                hex.setOwnerId(2);
+                if (i == 0) { // Первая позиция - столица
+                    hex.setCapital(true);
+                }
+            }
+        }
+        // Player 3 (YELLOW) - ID = 3
+        for (int i = 0; i < player3Positions.length; i++) {
+            int x = player3Positions[i][0];
+            int y = player3Positions[i][1];
+            Hex hex = map.getHex(x, y);
+            if (hex != null) {
+                hex.setOwnerId(3);
+                if (i == 0) { // Первая позиция - столица
+                    hex.setCapital(true);
+                }
             }
         }
     }

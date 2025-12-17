@@ -104,7 +104,8 @@ public class GameActionService {
         int unitLevel = unit.getLevel();
         int ownerId = unit.getOwnerId();
 
-        for (int opponentId = 0; opponentId < 2; opponentId++) {
+        for (Player player : game.getPlayers()) {
+            int opponentId = player.getId();
             if (opponentId == ownerId) continue;
 
             List<Unit> opponentUnits = unitManager.getPlayerUnits(opponentId);
@@ -227,25 +228,15 @@ public class GameActionService {
             }
 
             if (previousOwnerId != -1 && previousOwnerId != unit.getOwnerId()) {
-                for (int i = 0; i < 2; i++) {
-                    if (i == previousOwnerId) {
-                        Player enemyPlayer = null;
+                Player enemyPlayer = game.getPlayers().stream()
+                        .filter(p -> p.getId() == previousOwnerId)
+                        .findFirst()
+                        .orElse(null);
 
-                        if (i == 0) {
-                            enemyPlayer = game.getPlayers().size() > 0 ? game.getPlayers().get(0) : null;
-                        } else {
-                            enemyPlayer = game.getPlayers().size() > 1 ? game.getPlayers().get(1) : null;
-                        }
-
-                        if (enemyPlayer != null) {
-                            enemyPlayer.setBaseIncome(enemyPlayer.getBaseIncome() - 1);
-                            enemyPlayer.setIncome(enemyPlayer.getBaseIncome() - enemyPlayer.getUnitUpkeep());
-                        }
-
-                        break;
-                    }
+                if (enemyPlayer != null) {
+                    enemyPlayer.setBaseIncome(Math.max(0, enemyPlayer.getBaseIncome() - 1));
+                    enemyPlayer.setIncome(enemyPlayer.getBaseIncome() - enemyPlayer.getUnitUpkeep() - enemyPlayer.getTowerUpkeep() + enemyPlayer.getFarmIncome());
                 }
-            } else {
             }
         }
     }

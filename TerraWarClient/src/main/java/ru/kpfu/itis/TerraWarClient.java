@@ -92,7 +92,7 @@ public class TerraWarClient extends Application {
                     waitingScreen.updatePlayers(players);
                 });
                 
-                if (players.size() >= 2 && !gameStarted[0]) {
+                if (players.size() >= 4 && !gameStarted[0]) {
                     gameStarted[0] = true;
                     Platform.runLater(() -> {
                         waitingStage.close();
@@ -120,7 +120,7 @@ public class TerraWarClient extends Application {
     private void initializeGame(ConnectionResult connectionResult, List<String> serverPlayers, NetworkClient networkClient) {
         game = new Game();
 
-        String[] colors = {"RED", "BLUE", "GREEN", "YELLOW"};
+        String[] colors = {"RED", "BLUE", "YELLOW", "PINK"};
         for (int i = 0; i < serverPlayers.size() && i < colors.length; i++) {
             String playerName = serverPlayers.get(i);
             Player player = new Player(i, playerName, colors[i]);
@@ -171,8 +171,6 @@ public class TerraWarClient extends Application {
 
         onlineGameManager.setNetworkClient(networkClient, connectionResult.getPlayerName(), myIndexOnServer);
 
-        initializeStartingUnits();
-
         if (myIndexOnServer == 0) {
             onlineGameManager.sendStateUpdate();
         }
@@ -203,9 +201,6 @@ public class TerraWarClient extends Application {
         });
     }
 
-    private void initializeStartingUnits() {
-
-    }
 
     public static void main(String[] args) {
         launch(args);

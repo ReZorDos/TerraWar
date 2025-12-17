@@ -78,16 +78,24 @@ public class OnlineGameManager {
         networkClient.sendEndTurn();
     }
 
+    public void sendSurrender() {
+        if (!networkClient.isConnected()) {
+            return;
+        }
+        networkClient.sendLeave("surrender");
+    }
+
     private void handleStateMessage(GameStateMessage stateMsg) {
         Platform.runLater(() -> {
+            serverPlayers = stateMsg.getPlayers();
+            
             if (stateMsg.getStateSnapshot() != null) {
                 StateConverter.applyFullGameState(
                         stateMsg.getStateSnapshot(),
                         gameMap, unitManager, towerManager, farmManager,
-                        game, playerService);
+                        game, playerService, serverPlayers);
             }
             
-            serverPlayers = stateMsg.getPlayers();
             int serverCurrentTurn = stateMsg.getCurrentTurn();
             
             if (serverPlayers != null && !serverPlayers.isEmpty() &&
@@ -166,6 +174,10 @@ public class OnlineGameManager {
                 .filter(p -> myNickName.equals(p.getName()))
                 .findFirst()
                 .orElse(game.getCurrentPlayer());
+    }
+    
+    public List<String> getServerPlayers() {
+        return serverPlayers;
     }
 }
 

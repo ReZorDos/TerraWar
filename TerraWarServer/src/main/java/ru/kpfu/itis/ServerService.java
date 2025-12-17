@@ -9,6 +9,7 @@ import ru.kpfu.itis.message.MessageEnvelope;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Optional;
 import java.util.concurrent.*;
 
 public class ServerService {
@@ -50,10 +51,43 @@ public class ServerService {
     }
 
     public void removePlayer(PlayerHandler handler) {
+        String leavingPlayerNick = handler.getNick();
         players.remove(handler);
-        gameState.removePlayer(handler.getNick());
+        gameState.removePlayer(leavingPlayerNick);
+        
+        if (lastStateSnapshot != null) {
+            cleanPlayerDataFromState(leavingPlayerNick);
+        }
+        
         broadcastGameState();
-        System.out.println("Removed player: " + handler.getNick());
+        System.out.println("Removed player: " + leavingPlayerNick);
+    }
+
+    private void cleanPlayerDataFromState(String playerNick) {
+        if (lastStateSnapshot == null || lastStateSnapshot.getPlayersState() == null) return;
+
+        lastStateSnapshot.getPlayersState().stream()
+                .filter(ps -> playerNick.equals(ps.getName()))
+                .findFirst()
+                .ifPresent(playerState -> {
+                    int playerId = playerState.getId();
+
+                    Optional.ofNullable(lastStateSnapshot.getHexes())
+                            .ifPresent(hexes -> hexes.stream()
+                                    .filter(hex -> hex.getOwnerId() == playerId)
+                                    .forEach(hex -> hex.setOwnerId(-1)));
+
+                    Optional.ofNullable(lastStateSnapshot.getUnits())
+                            .ifPresent(units -> units.removeIf(unit -> unit.getOwnerId() == playerId));
+
+                    Optional.ofNullable(lastStateSnapshot.getTowers())
+                            .ifPresent(towers -> towers.removeIf(tower -> tower.getOwnerId() == playerId));
+
+                    Optional.ofNullable(lastStateSnapshot.getFarms())
+                            .ifPresent(farms -> farms.removeIf(farm -> farm.getOwnerId() == playerId));
+
+                    lastStateSnapshot.getPlayersState().removeIf(ps -> ps.getId() == playerId);
+                });
     }
 
     public void endTurn() {

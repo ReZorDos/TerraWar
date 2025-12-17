@@ -25,7 +25,7 @@ public class Game {
     }
 
     public void startGame() {
-        if (players.size() >= 2) {
+        if (players.size() >= 4) {
             gameStarted = true;
             currentPlayerIndex = 0;
         }

@@ -33,6 +33,8 @@ public class ImageCache {
         Image desertTexture = loadSafe("hex_desert.png", "hex_desert");
         Image redTexture = loadSafe("hex_grass_red.png", "hex_grass_red");
         Image blueTexture = loadSafe("hex_grass_blue.png", "hex_grass_blue");
+        Image yellowTexture = loadSafe("hex_grass_yellow.png", "hex_grass_yellow");
+        Image pinkTexture = loadSafe("hex_grass_pink.png", "hex_grass_pink");
         loadSafe("sea_texture.png", "sea_texture");
 
         // Fallback для текстур, которые не загрузились
@@ -41,6 +43,12 @@ public class ImageCache {
         }
         if (blueTexture == null && desertTexture != null) {
             cache.put("hex_grass_blue", desertTexture);
+        }
+        if (yellowTexture == null && desertTexture != null) {
+            cache.put("hex_grass_yellow", desertTexture);
+        }
+        if (pinkTexture == null && desertTexture != null) {
+            cache.put("hex_grass_pink", desertTexture);
         }
     }
 

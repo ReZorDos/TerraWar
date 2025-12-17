@@ -115,9 +115,19 @@ public class StateConverter {
             TowerManager towerManager,
             FarmManager farmManager,
             Game game,
-            PlayerService playerService) {
+            PlayerService playerService,
+            List<String> activePlayerNames) {
         
         if (state == null) return;
+        
+        List<Integer> activePlayerIds = new ArrayList<>();
+        if (activePlayerNames != null && state.getPlayersState() != null) {
+            for (PlayerState ps : state.getPlayersState()) {
+                if (activePlayerNames.contains(ps.getName())) {
+                    activePlayerIds.add(ps.getId());
+                }
+            }
+        }
         
         for (int y = 0; y < gameMap.getHeight(); y++) {
             for (int x = 0; x < gameMap.getWidth(); x++) {
@@ -137,7 +147,12 @@ public class StateConverter {
             
             for (HexState hexState : state.getHexes()) {
                 Hex hex = new Hex(hexState.getX(), hexState.getY(), Type.valueOf(hexState.getType()));
-                hex.setOwnerId(hexState.getOwnerId());
+                if (hexState.getOwnerId() != -1 && !activePlayerIds.isEmpty() &&
+                    !activePlayerIds.contains(hexState.getOwnerId())) {
+                    hex.setOwnerId(-1);
+                } else {
+                    hex.setOwnerId(hexState.getOwnerId());
+                }
                 hex.setCapital(hexState.isCapital());
                 gameMap.getGrid().get(hexState.getY()).set(hexState.getX(), hex);
             }
@@ -148,11 +163,13 @@ public class StateConverter {
         }
         if (state.getUnits() != null) {
             for (UnitState us : state.getUnits()) {
-                Unit unit = unitManager.createUnit(us.getOwnerId(), us.getHexX(), us.getHexY(), us.getLevel());
-                unit.setHasActed(us.isHasActed());
-                Hex hex = gameMap.getHex(us.getHexX(), us.getHexY());
-                if (hex != null) {
-                    hex.setUnitLevel(us.getLevel());
+                if (activePlayerIds.isEmpty() || activePlayerIds.contains(us.getOwnerId())) {
+                    Unit unit = unitManager.createUnit(us.getOwnerId(), us.getHexX(), us.getHexY(), us.getLevel());
+                    unit.setHasActed(us.isHasActed());
+                    Hex hex = gameMap.getHex(us.getHexX(), us.getHexY());
+                    if (hex != null) {
+                        hex.setUnitLevel(us.getLevel());
+                    }
                 }
             }
         }
@@ -165,7 +182,9 @@ public class StateConverter {
         }
         if (state.getTowers() != null) {
             for (TowerState ts : state.getTowers()) {
-                towerManager.createTower(ts.getOwnerId(), ts.getHexX(), ts.getHexY(), ts.getLevel());
+                if (activePlayerIds.isEmpty() || activePlayerIds.contains(ts.getOwnerId())) {
+                    towerManager.createTower(ts.getOwnerId(), ts.getHexX(), ts.getHexY(), ts.getLevel());
+                }
             }
         }
         
@@ -177,7 +196,9 @@ public class StateConverter {
         }
         if (state.getFarms() != null) {
             for (FarmState fs : state.getFarms()) {
-                farmManager.createFarm(fs.getOwnerId(), fs.getHexX(), fs.getHexY());
+                if (activePlayerIds.isEmpty() || activePlayerIds.contains(fs.getOwnerId())) {
+                    farmManager.createFarm(fs.getOwnerId(), fs.getHexX(), fs.getHexY());
+                }
             }
         }
         

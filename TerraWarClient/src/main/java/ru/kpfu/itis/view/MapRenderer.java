@@ -137,6 +137,8 @@ public class MapRenderer {
         return switch (hexData.getOwnerId()) {
             case 0 -> imageCache.get("hex_grass_red");
             case 1 -> imageCache.get("hex_grass_blue");
+            case 2 -> imageCache.get("hex_grass_yellow");
+            case 3 -> imageCache.get("hex_grass_pink");
             default -> imageCache.get("hex_desert");
         };
     }

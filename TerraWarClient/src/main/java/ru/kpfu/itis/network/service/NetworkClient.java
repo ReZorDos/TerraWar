@@ -69,6 +69,10 @@ public class NetworkClient {
         sendMessage("endTurn", null);
     }
     
+    public void sendLeave(String reason) {
+        LeaveMessage leaveMsg = new LeaveMessage(reason);
+        sendMessage("leave", leaveMsg);
+    }
 
     private void sendMessage(String type, Object data) {
         try {
