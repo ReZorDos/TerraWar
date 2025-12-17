@@ -43,6 +43,8 @@ public class MapRenderer {
     private final ImageCache imageCache;
     // Храним StackPane для каждого юнита по его ID для анимации
     private final Map<Integer, StackPane> unitPanes = new HashMap<>();
+    // Храним анимации подпрыгивания для юнитов, которые ещё могут ходить
+    private final Map<Integer, Timeline> unitBounceAnimations = new HashMap<>();
 
     public MapRenderer(GameMap gameMap,
                        Game game,
@@ -61,7 +63,12 @@ public class MapRenderer {
     }
 
     public void initializeMap() {
-        // Удаляем панели юнитов из сцены перед очисткой
+        // Останавливаем и удаляем анимации и панели юнитов перед очисткой
+        for (Timeline timeline : unitBounceAnimations.values()) {
+            timeline.stop();
+        }
+        unitBounceAnimations.clear();
+
         for (StackPane pane : unitPanes.values()) {
             mapPane.getChildren().remove(pane);
         }
@@ -156,10 +163,15 @@ public class MapRenderer {
             drawUnitImageWithNumber(unit);
         }
         
-        // Удаляем панели юнитов, которых больше нет
+        // Удаляем панели и анимации юнитов, которых больше нет
         unitPanes.entrySet().removeIf(entry -> {
-            if (!currentUnitIds.contains(entry.getKey())) {
+            int unitId = entry.getKey();
+            if (!currentUnitIds.contains(unitId)) {
                 mapPane.getChildren().remove(entry.getValue());
+                Timeline timeline = unitBounceAnimations.remove(unitId);
+                if (timeline != null) {
+                    timeline.stop();
+                }
                 return true;
             }
             return false;
@@ -172,6 +184,10 @@ public class MapRenderer {
             StackPane oldPane = unitPanes.remove(unit.getId());
             if (oldPane != null) {
                 mapPane.getChildren().remove(oldPane);
+            }
+            Timeline oldTimeline = unitBounceAnimations.remove(unit.getId());
+            if (oldTimeline != null) {
+                oldTimeline.stop();
             }
             return;
         }
@@ -215,6 +231,8 @@ public class MapRenderer {
             stackPane.setPrefSize(stackWidth, stackHeight);
             stackPane.setLayoutX(targetX);
             stackPane.setLayoutY(targetY);
+            // Сбрасываем вертикальный сдвиг анимации
+            stackPane.setTranslateY(0);
             
             unitPanes.put(unit.getId(), stackPane);
             // Убеждаемся, что панель добавлена в mapPane
@@ -282,6 +300,62 @@ public class MapRenderer {
         }
 
         stackPane.setUserData("UNIT_STACK_" + unit.getHexX() + "_" + unit.getHexY());
+
+        // Обновляем/запускаем анимацию подпрыгивания в зависимости от того, может ли юнит ходить
+        updateUnitBounceAnimation(unit, stackPane);
+    }
+
+    /**
+     * Включает плавную анимацию подпрыгивания для юнитов, которые ещё могут ходить
+     * и принадлежат текущему игроку. После хода (hasActed = true) анимация отключается.
+     */
+    private void updateUnitBounceAnimation(Unit unit, StackPane stackPane) {
+        boolean isCurrentPlayersUnit = unit.getOwnerId() == game.getCurrentPlayer().getId();
+        boolean shouldBounce = isCurrentPlayersUnit && unit.canAct();
+        int unitId = unit.getId();
+
+        Timeline existingTimeline = unitBounceAnimations.get(unitId);
+
+        if (!shouldBounce) {
+            // Анимация не нужна — останавливаем и убираем
+            if (existingTimeline != null) {
+                existingTimeline.stop();
+                unitBounceAnimations.remove(unitId);
+            }
+            // Сбрасываем возможный сдвиг, чтобы юнит стоял ровно
+            stackPane.setTranslateY(0);
+            return;
+        }
+
+        // Если анимация уже есть — убеждаемся, что она привязана к нужному узлу и запущена
+        if (existingTimeline != null) {
+            if (existingTimeline.getStatus() != Timeline.Status.RUNNING) {
+                existingTimeline.play();
+            }
+            return;
+        }
+
+        // Создаём новую плавную анимацию подпрыгивания
+        double jumpHeight = Hexagon.SIZE * 0.15; // лёгкое подпрыгивание
+
+        Timeline bounce = new Timeline(
+                new KeyFrame(
+                        javafx.util.Duration.ZERO,
+                        new KeyValue(stackPane.translateYProperty(), 0)
+                ),
+                new KeyFrame(
+                        javafx.util.Duration.millis(400),
+                        new KeyValue(stackPane.translateYProperty(), -jumpHeight)
+                ),
+                new KeyFrame(
+                        javafx.util.Duration.millis(800),
+                        new KeyValue(stackPane.translateYProperty(), 0)
+                )
+        );
+        bounce.setCycleCount(Timeline.INDEFINITE);
+        bounce.play();
+
+        unitBounceAnimations.put(unitId, bounce);
     }
 
     private void drawFarms() {
