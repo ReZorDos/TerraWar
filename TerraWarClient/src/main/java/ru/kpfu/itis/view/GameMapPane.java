@@ -7,6 +7,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.application.Platform;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -15,6 +16,7 @@ import ru.kpfu.itis.model.GameMap;
 import ru.kpfu.itis.model.Hex;
 import ru.kpfu.itis.model.Player;
 import ru.kpfu.itis.model.Unit;
+import ru.kpfu.itis.network.service.OnlineGameManager;
 import ru.kpfu.itis.service.*;
 import ru.kpfu.itis.state.GameState;
 import java.util.List;
@@ -39,6 +41,7 @@ public class GameMapPane extends VBox {
     private final MapRenderer mapRenderer;
     private final PlacementController placementController;
     private final ImageCache imageCache;
+    private final OnlineGameManager onlineGameManager;
     private Unit selectedUnit = null;
     private List<Hex> actionHexes = null;
 
@@ -51,13 +54,15 @@ public class GameMapPane extends VBox {
                        FarmManager farmManager,
                        FarmShop farmShop,
                        TowerManager towerManager,
-                       TowerShop towerShop) {
+                       TowerShop towerShop,
+                       OnlineGameManager onlineGameManager) {
         this.gameMap = gameMap;
         this.gameActionService = gameActionService;
         this.game = game;
         this.turnManager = turnManager;
         this.unitManager = unitManager;
         this.towerManager = towerManager;
+        this.onlineGameManager = onlineGameManager;
         this.gameState = new GameState();
         this.mapPane = new Pane();
         this.imageCache = new ImageCache();
@@ -83,27 +88,18 @@ public class GameMapPane extends VBox {
                 towerShop,
                 mapRenderer,
                 imageCache,
-                new PlacementController.UiCallbacks() {
-                    @Override
-                    public void refreshMap() {
-                        initializeMap();
-                    }
-
-                    @Override
-                    public void refreshTurnInfo() {
-                        updateTurnInfo();
-                    }
-
-                    @Override
-                    public void refreshHighlights() {
-                        GameMapPane.this.refreshHighlights();
-                    }
-
-                    @Override
-                    public void showAlert(String title, String message) {
-                        GameMapPane.this.showAlert(title, message);
-                    }
-                }
+                onlineGameManager
+        );
+        
+        placementController.setCallbacks(
+                this::initializeMap,
+                this::updateTurnInfo,
+                this::refreshHighlights,
+                this::showAlert,
+                this::sendStateUpdateIfOnline,
+                () -> onlineGameManager != null && onlineGameManager.isConnected() 
+                        ? onlineGameManager.isMyTurn() 
+                        : false
         );
         gameState.setCurrentPlayerId(game.getCurrentPlayer().getId());
         playerNameLabel = new Label();
@@ -117,7 +113,26 @@ public class GameMapPane extends VBox {
         initializeMap();
         setupEventHandlers();
         updateTurnInfo();
-        turnManager.startPlayerTurn();
+        
+        if (onlineGameManager != null) {
+            onlineGameManager.setOnStateUpdated(() -> {
+                updateCurrentPlayer();
+                initializeMap();
+                updateTurnInfo();
+                refreshHighlights();
+            });
+            onlineGameManager.setOnError(error -> {
+                showAlert("Ошибка сети", error);
+            });
+        } else {
+            showAlert("Ошибка", "Онлайн-менеджер недоступен. Завершите приложение.");
+            Platform.exit();
+        }
+        
+        if (onlineGameManager == null || !onlineGameManager.isConnected()) {
+            showAlert("Ошибка", "Нет подключения к серверу. Завершите приложение.");
+            Platform.exit();
+        }
     }
 
     private void initializeUI() {
@@ -275,21 +290,27 @@ public class GameMapPane extends VBox {
     }
 
     private void updateTurnInfo() {
-        Player currentPlayer = game.getCurrentPlayer();
-        if (currentPlayer == null) return;
+        Player myPlayer;
+        if (onlineGameManager != null && onlineGameManager.isConnected()) {
+            myPlayer = onlineGameManager.getMyPlayer();
+        } else {
+            myPlayer = game.getCurrentPlayer();
+        }
+        
+        if (myPlayer == null) return;
 
-        playerNameLabel.setText(currentPlayer.getName());
-        Color playerColor = getPlayerTextColor(currentPlayer.getId());
+        playerNameLabel.setText(myPlayer.getName());
+        Color playerColor = getPlayerTextColor(myPlayer.getId());
         playerNameLabel.setStyle("-fx-text-fill: " + colorToHex(playerColor) + ";");
 
-        moneyLabel.setText(String.valueOf(currentPlayer.getMoney()));
+        moneyLabel.setText(String.valueOf(myPlayer.getMoney()));
 
-        int income = currentPlayer.getIncome();
+        int income = myPlayer.getIncome();
         incomeLabel.setText(income >= 0 ? "+" + income : String.valueOf(income));
 
-        int unitCount = unitManager.getPlayerUnits(currentPlayer.getId()).size();
-        int farmCount = currentPlayer.getFarms().size();
-        int towerCount = towerManager.getPlayerTowers(currentPlayer.getId()).size();
+        int unitCount = unitManager.getPlayerUnits(myPlayer.getId()).size();
+        int farmCount = myPlayer.getFarms().size();
+        int towerCount = towerManager.getPlayerTowers(myPlayer.getId()).size();
 
         unitsLabel.setText("⚔ " + unitCount);
         farmsLabel.setText("🌾 " + farmCount);
@@ -363,14 +384,20 @@ public class GameMapPane extends VBox {
     }
 
     private void handleHexClick(TexturedHexagon clickedHex) {
+        if (onlineGameManager != null && onlineGameManager.isConnected() && !onlineGameManager.isMyTurn()) {
+            return;
+        }
+        
         if (placementController.isPlacementActive()) {
             placementController.handleHexClick(clickedHex);
             return;
         }
 
         Unit unitOnHex = unitManager.getUnitAt(clickedHex.getGridX(), clickedHex.getGridY());
+        Player currentPlayer = game.getCurrentPlayer();
         if (unitOnHex != null &&
-                unitOnHex.getOwnerId() == gameState.getCurrentPlayerId() &&
+                currentPlayer != null &&
+                unitOnHex.getOwnerId() == currentPlayer.getId() &&
                 unitOnHex.canAct()) {
             if (selectedUnit != unitOnHex) {
                 selectUnit(unitOnHex);
@@ -391,6 +418,7 @@ public class GameMapPane extends VBox {
                 deselectUnit();
                 updateTurnInfo();
                 initializeMap();
+                sendStateUpdateIfOnline();
             }
             return;
         }
@@ -453,28 +481,55 @@ public class GameMapPane extends VBox {
     }
 
     private void endTurn() {
+        if (onlineGameManager == null || !onlineGameManager.isConnected()) {
+            showAlert("Ошибка", "Нет подключения к серверу. Завершите приложение.");
+            return;
+        }
+        if (!onlineGameManager.isMyTurn()) {
+            return;
+        }
+
         placementController.cancelPlacementIfActive();
         deselectUnit();
-        turnManager.endPlayerTurn();
-        turnManager.startPlayerTurn();
-        updateCurrentPlayer();
+
+        Player currentPlayer = game.getCurrentPlayer();
+        if (currentPlayer != null) {
+            turnManager.updatePlayerMoneyForTurnEnd(currentPlayer.getId());
+        }
+        
+        sendStateUpdateIfOnline();
+        
+        onlineGameManager.sendEndTurn();
+        
         refreshHighlights();
         updateTurnInfo();
         initializeMap();
+    }
+
+    private void sendStateUpdateIfOnline() {
+        if (onlineGameManager != null && onlineGameManager.isConnected() && onlineGameManager.isMyTurn()) {
+            onlineGameManager.sendStateUpdate();
+        }
     }
 
     private void updateCurrentPlayer() {
         if (game.getCurrentPlayer() != null) {
             gameState.setCurrentPlayerId(game.getCurrentPlayer().getId());
         }
+        updateUIForTurn();
+    }
+
+    private void updateUIForTurn() {
+        boolean canPlay = true;
+        if (onlineGameManager != null && onlineGameManager.isConnected()) {
+            canPlay = onlineGameManager.isMyTurn();
+        }
+        
+        endTurnButton.setDisable(!canPlay);
     }
 
     public TexturedHexagon getHexAtPixel(double mouseX, double mouseY) {
         return mapRenderer.getHexAtPixel(mouseX, mouseY);
-    }
-
-    public TexturedHexagon getHexagonAt(int gridX, int gridY) {
-        return mapRenderer.getHexagonAt(gridX, gridY);
     }
 
     private void showAlert(String title, String message) {

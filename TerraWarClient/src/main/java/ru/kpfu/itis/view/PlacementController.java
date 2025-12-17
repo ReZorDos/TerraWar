@@ -8,22 +8,13 @@ import ru.kpfu.itis.model.Hex;
 import ru.kpfu.itis.model.Player;
 import ru.kpfu.itis.model.Tower;
 import ru.kpfu.itis.model.Unit;
+import ru.kpfu.itis.network.service.OnlineGameManager;
 import ru.kpfu.itis.service.*;
 
 import java.util.*;
 import java.util.function.BiConsumer;
 
-/**
- * Handles purchasing and placing units, farms and towers on the map.
- */
 public class PlacementController {
-
-    public interface UiCallbacks {
-        void refreshMap();
-        void refreshTurnInfo();
-        void refreshHighlights();
-        void showAlert(String title, String message);
-    }
 
     private final GameMap gameMap;
     private final Game game;
@@ -36,9 +27,14 @@ public class PlacementController {
     private final TowerManager towerManager;
     private final TowerShop towerShop;
     private final MapRenderer mapRenderer;
-    private final UiCallbacks uiCallbacks;
     private final ImageCache imageCache;
-
+    private final OnlineGameManager onlineGameManager;
+    private Runnable onMapRefresh;
+    private Runnable onTurnInfoRefresh;
+    private Runnable onHighlightsRefresh;
+    private java.util.function.BiConsumer<String, String> onShowAlert;
+    private Runnable onStateUpdate;
+    private java.util.function.Supplier<Boolean> onCheckMyTurn;
     private PlacementMode placementMode = PlacementMode.NONE;
     private Integer placementLevel = null;
     private Integer placementPrice = null;
@@ -55,7 +51,7 @@ public class PlacementController {
                                TowerShop towerShop,
                                MapRenderer mapRenderer,
                                ImageCache imageCache,
-                               UiCallbacks uiCallbacks) {
+                               OnlineGameManager onlineGameManager) {
         this.gameMap = gameMap;
         this.game = game;
         this.gameActionService = gameActionService;
@@ -67,8 +63,29 @@ public class PlacementController {
         this.towerManager = towerManager;
         this.towerShop = towerShop;
         this.mapRenderer = mapRenderer;
-        this.uiCallbacks = uiCallbacks;
         this.imageCache = imageCache;
+        this.onlineGameManager = onlineGameManager;
+    }
+
+    public void setCallbacks(Runnable onMapRefresh,
+                            Runnable onTurnInfoRefresh,
+                            Runnable onHighlightsRefresh,
+                            java.util.function.BiConsumer<String, String> onShowAlert,
+                            Runnable onStateUpdate,
+                            java.util.function.Supplier<Boolean> onCheckMyTurn) {
+        this.onMapRefresh = onMapRefresh;
+        this.onTurnInfoRefresh = onTurnInfoRefresh;
+        this.onHighlightsRefresh = onHighlightsRefresh;
+        this.onShowAlert = onShowAlert;
+        this.onStateUpdate = onStateUpdate;
+        this.onCheckMyTurn = onCheckMyTurn;
+    }
+    
+    private boolean isMyTurn() {
+        if (onCheckMyTurn != null) {
+            return onCheckMyTurn.get();
+        }
+        return true;
     }
 
     public boolean isPlacementActive() {
@@ -85,6 +102,10 @@ public class PlacementController {
     }
 
     public boolean handleHexClick(TexturedHexagon clickedHex) {
+        if (!isMyTurn()) {
+            return false;
+        }
+        
         return switch (placementMode) {
             case FARM -> {
                 handleFarmPlacement(clickedHex);
@@ -103,6 +124,13 @@ public class PlacementController {
     }
 
     public void handleBuyUnit() {
+        if (!isMyTurn()) {
+            if (onShowAlert != null) {
+                onShowAlert.accept("Не ваш ход", "Дождитесь своего хода");
+            }
+            return;
+        }
+        
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return;
 
@@ -118,8 +146,10 @@ public class PlacementController {
         if (selectedLevel != null) {
             int price = unitShop.getUnitPrice(selectedLevel);
             if (!unitShop.canAffordUnit(currentPlayer.getMoney(), selectedLevel)) {
-                uiCallbacks.showAlert("Недостаточно денег",
-                        "Юнит уровня " + selectedLevel + " стоит " + price + " монет\n");
+                if (onShowAlert != null) {
+                    onShowAlert.accept("Недостаточно денег",
+                            "Юнит уровня " + selectedLevel + " стоит " + price + " монет\n");
+                }
                 return;
             }
             enableUnitPlacementMode(selectedLevel, price);
@@ -127,6 +157,13 @@ public class PlacementController {
     }
 
     public void handleBuyFarm() {
+        if (!isMyTurn()) {
+            if (onShowAlert != null) {
+                onShowAlert.accept("Не ваш ход", "Дождитесь своего хода");
+            }
+            return;
+        }
+        
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return;
 
@@ -142,8 +179,10 @@ public class PlacementController {
         if (selected) {
             int price = farmShop.getFarmPrice(currentPlayer.getId());
             if (!farmShop.canAffordFarm(currentPlayer.getMoney(), currentPlayer.getId())) {
-                uiCallbacks.showAlert("Недостаточно денег",
-                        "Ферма стоит " + price + " монет");
+                if (onShowAlert != null) {
+                    onShowAlert.accept("Недостаточно денег",
+                            "Ферма стоит " + price + " монет");
+                }
                 return;
             }
             enableFarmPlacementMode(price);
@@ -151,6 +190,13 @@ public class PlacementController {
     }
 
     public void handleBuyTower() {
+        if (!isMyTurn()) {
+            if (onShowAlert != null) {
+                onShowAlert.accept("Не ваш ход", "Дождитесь своего хода");
+            }
+            return;
+        }
+        
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer == null) return;
 
@@ -166,8 +212,10 @@ public class PlacementController {
         if (selectedLevel != null) {
             int price = towerShop.getTowerPrice(currentPlayer.getId(), selectedLevel);
             if (!towerShop.canAffordTower(currentPlayer.getMoney(), selectedLevel, currentPlayer.getId())) {
-                uiCallbacks.showAlert("Недостаточно денег",
-                        "Башня уровня " + selectedLevel + " стоит " + price + " монет");
+                if (onShowAlert != null) {
+                    onShowAlert.accept("Недостаточно денег",
+                            "Башня уровня " + selectedLevel + " стоит " + price + " монет");
+                }
                 return;
             }
             enableTowerPlacementMode(selectedLevel, price);
@@ -185,7 +233,9 @@ public class PlacementController {
         placementLevel = level;
         placementPrice = price;
         highlightAvailableHexesForPlacement(this::highlightUnitPlacementHex);
-        uiCallbacks.showAlert("Размещение юнита", "Выберите гекс на своей территории для размещения юнита уровня " + level);
+        if (onShowAlert != null) {
+            onShowAlert.accept("Размещение юнита", "Выберите гекс на своей территории для размещения юнита уровня " + level);
+        }
     }
 
     private void disableUnitPlacementMode() {
@@ -193,7 +243,9 @@ public class PlacementController {
         placementLevel = null;
         placementPrice = null;
         clearPlacementHighlights();
-        uiCallbacks.refreshHighlights();
+        if (onHighlightsRefresh != null) {
+            onHighlightsRefresh.run();
+        }
     }
 
     private void handleUnitPlacement(TexturedHexagon clickedHex) {
@@ -205,8 +257,10 @@ public class PlacementController {
         Hex hex = gameMap.getHex(x, y);
 
         if (!canPlaceUnitOnHex(currentPlayer.getId(), x, y)) {
-            uiCallbacks.showAlert("Ошибка",
-                    "Можно размещать юнитов только на своей территории ИЛИ на соседних с вашей базой гексах!");
+            if (onShowAlert != null) {
+                onShowAlert.accept("Ошибка",
+                        "Можно размещать юнитов только на своей территории ИЛИ на соседних с вашей базой гексах!");
+            }
             return;
         }
 
@@ -220,9 +274,11 @@ public class PlacementController {
                 if (tempUnitForCheck.canDefeat(existingUnit)) {
                     unitManager.removeUnit(existingUnit.getId());
                 } else {
-                    uiCallbacks.showAlert("Ошибка",
-                            "Нельзя разместить юнита уровня " + placementLevel +
-                                    " на вражеского юнита уровня " + existingUnit.getLevel() + "!");
+                    if (onShowAlert != null) {
+                        onShowAlert.accept("Ошибка",
+                                "Нельзя разместить юнита уровня " + placementLevel +
+                                        " на вражеского юнита уровня " + existingUnit.getLevel() + "!");
+                    }
                     return;
                 }
             } else {
@@ -238,8 +294,9 @@ public class PlacementController {
 
         currentPlayer.setMoney(currentPlayer.getMoney() - placementPrice);
         disableUnitPlacementMode();
-        uiCallbacks.refreshTurnInfo();
-        uiCallbacks.refreshMap();
+        if (onTurnInfoRefresh != null) onTurnInfoRefresh.run();
+        if (onMapRefresh != null) onMapRefresh.run();
+        if (onStateUpdate != null) onStateUpdate.run();
     }
 
     private boolean canPlaceUnitOnHex(int playerId, int hexX, int hexY) {
@@ -294,15 +351,18 @@ public class PlacementController {
         farmShop.purchaseFarm(currentPlayer.getId(), x, y);
         currentPlayer.setMoney(currentPlayer.getMoney() - placementPrice);
         disableFarmPlacementMode();
-        uiCallbacks.refreshTurnInfo();
-        uiCallbacks.refreshMap();
+        if (onTurnInfoRefresh != null) onTurnInfoRefresh.run();
+        if (onMapRefresh != null) onMapRefresh.run();
+        if (onStateUpdate != null) onStateUpdate.run();
     }
 
     private void disableFarmPlacementMode() {
         placementMode = PlacementMode.NONE;
         placementPrice = null;
         clearPlacementHighlights();
-        uiCallbacks.refreshHighlights();
+        if (onHighlightsRefresh != null) {
+            onHighlightsRefresh.run();
+        }
     }
 
     private void enableTowerPlacementMode(int level, int price) {
@@ -316,8 +376,10 @@ public class PlacementController {
         placementLevel = level;
         placementPrice = price;
         highlightAvailableHexesForPlacement(this::highlightTowerPlacementHex);
-        uiCallbacks.showAlert("Размещение башни",
-                "Выберите гекс на своей территории для размещения башни уровня " + level);
+        if (onShowAlert != null) {
+            onShowAlert.accept("Размещение башни",
+                    "Выберите гекс на своей территории для размещения башни уровня " + level);
+        }
     }
 
     private void handleTowerPlacement(TexturedHexagon clickedHex) {
@@ -329,30 +391,39 @@ public class PlacementController {
         Hex hex = gameMap.getHex(x, y);
 
         if (hex.getOwnerId() != currentPlayer.getId()) {
-            uiCallbacks.showAlert("Ошибка", "Башню можно ставить только на свою территорию!");
+            if (onShowAlert != null) {
+                onShowAlert.accept("Ошибка", "Башню можно ставить только на свою территорию!");
+            }
             return;
         }
 
         if (unitManager.getUnitAt(x, y) != null) {
-            uiCallbacks.showAlert("Ошибка", "На этом гексе уже стоит юнит!");
+            if (onShowAlert != null) {
+                onShowAlert.accept("Ошибка", "На этом гексе уже стоит юнит!");
+            }
             return;
         }
 
         if (farmManager.getFarmAt(x, y) != null) {
-            uiCallbacks.showAlert("Ошибка", "На этом гексе уже стоит ферма!");
+            if (onShowAlert != null) {
+                onShowAlert.accept("Ошибка", "На этом гексе уже стоит ферма!");
+            }
             return;
         }
 
         if (towerManager.getTowerAt(x, y) != null) {
-            uiCallbacks.showAlert("Ошибка", "На этом гексе уже стоит башня!");
+            if (onShowAlert != null) {
+                onShowAlert.accept("Ошибка", "На этом гексе уже стоит башня!");
+            }
             return;
         }
 
         towerShop.purchaseTower(currentPlayer.getId(), x, y, placementLevel);
         currentPlayer.setMoney(currentPlayer.getMoney() - placementPrice);
         disableTowerPlacementMode();
-        uiCallbacks.refreshTurnInfo();
-        uiCallbacks.refreshMap();
+        if (onTurnInfoRefresh != null) onTurnInfoRefresh.run();
+        if (onMapRefresh != null) onMapRefresh.run();
+        if (onStateUpdate != null) onStateUpdate.run();
     }
 
     private void disableTowerPlacementMode() {
@@ -360,7 +431,9 @@ public class PlacementController {
         placementLevel = null;
         placementPrice = null;
         clearPlacementHighlights();
-        uiCallbacks.refreshHighlights();
+        if (onHighlightsRefresh != null) {
+            onHighlightsRefresh.run();
+        }
     }
 
     private void highlightAvailableHexesForPlacement(BiConsumer<TexturedHexagon, Player> highlightStrategy) {

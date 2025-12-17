@@ -35,15 +35,25 @@ public class GameTurnManager {
     public void endPlayerTurn() {
         if (!isPlayerTurnActive) return;
 
-        checkAndHandleBankruptcy();
-
         Player currentPlayer = game.getCurrentPlayer();
         if (currentPlayer != null) {
             currentPlayer.setMoney(currentPlayer.getMoney() + currentPlayer.getIncome());
+            checkAndHandleBankrot(currentPlayer.getId());
         }
 
         game.nextTurn();
         isPlayerTurnActive = false;
+    }
+
+    public void updatePlayerMoneyForTurnEnd(int playerId) {
+        Player player = game.getPlayers().stream()
+                .filter(p -> p.getId() == playerId)
+                .findFirst()
+                .orElse(null);
+        if (player != null) {
+            player.setMoney(player.getMoney() + player.getIncome());
+            checkAndHandleBankrot(playerId);
+        }
     }
 
     private void resetPlayerUnitActions(int playerId) {
@@ -53,18 +63,12 @@ public class GameTurnManager {
         }
     }
 
-    public String getTurnInfo() {
-        Player currentPlayer = game.getCurrentPlayer();
-        if (currentPlayer == null) return "No player";
-
-        return String.format("Игрок: %s | Деньги: %d | Доход: %d",
-                currentPlayer.getName(), currentPlayer.getMoney(), currentPlayer.getIncome());
-    }
-
-    public void checkAndHandleBankruptcy() {
-        Player currentPlayer = game.getCurrentPlayer();
-        if (currentPlayer != null && currentPlayer.getMoney() <= 0) {
-            unitManager.removeAllPlayerUnits(currentPlayer.getId());
+    public void checkAndHandleBankrot(int playerId) {
+        Player player = unitManager.getPlayerById(playerId);
+        
+        if (player.getMoney() <= 0) {
+            unitManager.removeAllPlayerUnits(playerId);
+            player.setMoney(0);
         }
     }
 }

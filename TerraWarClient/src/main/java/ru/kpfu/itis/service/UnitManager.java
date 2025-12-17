@@ -72,8 +72,7 @@ public class UnitManager {
         }
     }
 
-    // Вспомогательный метод для получения игрока по ID
-    private Player getPlayerById(int playerId) {
+    public Player getPlayerById(int playerId) {
         return game.getPlayers().stream()
                 .filter(player -> player.getId() == playerId)
                 .findFirst()

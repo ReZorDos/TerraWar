@@ -81,7 +81,6 @@ public class ServerService {
         }
 
         lastStateSnapshot = snapshot;
-        gameState.nextTurn();
         return true;
     }
 
