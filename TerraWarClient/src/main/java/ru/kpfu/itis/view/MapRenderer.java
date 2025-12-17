@@ -141,14 +141,6 @@ public class MapRenderer {
         };
     }
 
-    public void updateHexOwner(int x, int y, int ownerId) {
-        TexturedHexagon hexagon = getHexagonAt(x, y);
-        if (hexagon != null) {
-            // Не используем overlay - они не загружаются
-            hexagon.setOwner(ownerId, null, null);
-        }
-    }
-
     private String gridKey(int x, int y) {
         return x + "," + y;
     }

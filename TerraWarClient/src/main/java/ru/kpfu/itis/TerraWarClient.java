@@ -198,6 +198,7 @@ public class TerraWarClient extends Application {
             scene.setFill(Color.web("#2b2b2b"));
             mainStage.setScene(scene);
             mainStage.setTitle("TerraWar - Онлайн");
+            mainStage.setMaximized(true);
             mainStage.show();
         });
     }

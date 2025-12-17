@@ -7,12 +7,9 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polygon;
 
-/**
- * Hexagon with textured background using Canvas and visible borders.
- */
 public class TexturedHexagon extends Pane {
     public static final double SIZE = Hexagon.SIZE;
-    private static final double OFFSET_X = 230;
+    private static final double OFFSET_X = 450;
     private static final double OFFSET_Y = 120;
 
     private final int gridX;
@@ -34,8 +31,8 @@ public class TexturedHexagon extends Pane {
         this.gridY = gridY;
         this.baseTextureImage = baseTextureImage;
 
-        texWidth = SIZE * Math.sqrt(3) * 3;   // 129.9px
-        texHeight = SIZE * 3;                  // 75px
+        texWidth = SIZE * Math.sqrt(3) * 3;
+        texHeight = SIZE * 3;
 
         this.setPrefSize(texWidth, texHeight);
         this.setMaxSize(texWidth, texHeight);
@@ -104,9 +101,6 @@ public class TexturedHexagon extends Pane {
         return gridY;
     }
 
-    public void setOwner(int ownerId, Image redOverlay, Image blueOverlay) {
-        // Reserved for future overlay functionality
-    }
 
     public void setHighlighted(boolean highlighted) {
         this.highlighted = highlighted;
@@ -140,10 +134,6 @@ public class TexturedHexagon extends Pane {
             border.setStroke(Color.TRANSPARENT);
             border.setStrokeWidth(0.0);
         }
-    }
-
-    public boolean isSelected() {
-        return selected;
     }
 
     public void setStroke(Color color) {

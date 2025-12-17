@@ -12,8 +12,6 @@ public class Hexagon extends Polygon {
     private final int gridY;
     private boolean highlighted = false;
     private boolean selected = false;
-    private static double OFFSET_X = 230;
-    private static double OFFSET_Y = 120;
 
     public Hexagon(int gridX, int gridY) {
         this.gridX = gridX;
@@ -46,44 +44,10 @@ public class Hexagon extends Polygon {
         return new double[]{centerX, centerY};
     }
 
-    public void positionAtGridCoords() {
-        double[] center = getCenterCoords(gridX, gridY);
-        setTranslateX(center[0] + OFFSET_X);
-        setTranslateY(center[1] + OFFSET_Y);
-    }
-
-    public double[] getActualCenter() {
-        return new double[]{
-                getTranslateX(),
-                getTranslateY()
-        };
-    }
-
     public void setColor(Color color) {
         setFill(color);
         setStroke(Color.BLACK);
         setStrokeWidth(1.0);
     }
 
-    public void setSelected(boolean selected) {
-        this.selected = selected;
-        if (selected) {
-            setStroke(Color.YELLOW);
-            setStrokeWidth(3.0);
-        } else {
-            setStroke(Color.BLACK);
-            setStrokeWidth(1.0);
-        }
-    }
-
-    public void setHighlighted(boolean highlighted) {
-        this.highlighted = highlighted;
-        if (highlighted) {
-            setStroke(Color.LIMEGREEN);
-            setStrokeWidth(2.0);
-        } else {
-            setStroke(Color.BLACK);
-            setStrokeWidth(1.0);
-        }
-    }
 }

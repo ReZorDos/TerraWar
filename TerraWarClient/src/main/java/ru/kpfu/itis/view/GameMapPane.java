@@ -19,7 +19,10 @@ import ru.kpfu.itis.model.Unit;
 import ru.kpfu.itis.network.service.OnlineGameManager;
 import ru.kpfu.itis.service.*;
 import ru.kpfu.itis.state.GameState;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GameMapPane extends VBox {
 
@@ -521,64 +524,52 @@ public class GameMapPane extends VBox {
         checkGameEndCondition();
     }
 
-    /**
-     * Проверяет, не закрашены ли все клетки одним игроком.
-     * Если да — завершает игру и показывает сообщение о победителе.
-     */
     private void checkGameEndCondition() {
         if (gameFinished) {
             return;
         }
 
-        int winnerId = -1;
-        boolean hasOwnedCells = false;
+        Map<Integer, Integer> playerCells = new HashMap<>();
+
+        for (Player player : game.getPlayers()) {
+            playerCells.put(player.getId(), 0);
+        }
 
         for (int y = 0; y < gameMap.getHeight(); y++) {
             for (int x = 0; x < gameMap.getWidth(); x++) {
                 Hex hex = gameMap.getHex(x, y);
-                if (hex == null) {
-                    continue;
-                }
-
-                int ownerId = hex.getOwnerId();
-                // Если есть нейтральная клетка — победы ещё нет
-                if (ownerId == -1) {
-                    return;
-                }
-
-                if (!hasOwnedCells) {
-                    winnerId = ownerId;
-                    hasOwnedCells = true;
-                } else if (ownerId != winnerId) {
-                    // Нашли клетку другого игрока — победы ещё нет
-                    return;
+                if (hex != null && hex.getOwnerId() != -1) {
+                    int ownerId = hex.getOwnerId();
+                    playerCells.put(ownerId, playerCells.get(ownerId) + 1);
                 }
             }
         }
 
-        if (!hasOwnedCells) {
-            return;
+        int playersWithCells = 0;
+        int lastPlayerWithCellsId = -1;
+
+        for (Map.Entry<Integer, Integer> entry : playerCells.entrySet()) {
+            if (entry.getValue() > 0) {
+                playersWithCells++;
+                lastPlayerWithCellsId = entry.getKey();
+            }
         }
 
-        gameFinished = true;
+        if (playersWithCells == 1) {
+            gameFinished = true;
 
-        final int finalWinnerId = winnerId;
-        final String winnerName;
-        Player winner = game.getPlayers().stream()
-                .filter(p -> p.getId() == finalWinnerId)
-                .findFirst()
-                .orElse(null);
-        if (winner != null) {
-            winnerName = winner.getName();
-        } else {
-            winnerName = "Игрок " + (finalWinnerId + 1);
+            int winnerId = lastPlayerWithCellsId;
+            String winnerName = game.getPlayers().stream()
+                    .filter(player -> player.getId() == winnerId)
+                    .findFirst()
+                    .map(Player::getName)
+                    .orElse("Игрок победил");
+
+            Platform.runLater(() -> {
+                showAlert("Игра окончена", "Победил " + winnerName + "!");
+                Platform.exit();
+            });
         }
-
-        Platform.runLater(() -> {
-            showAlert("Игра окончена", "Победил " + winnerName + " — все клетки закрашены его цветом!");
-            // Можно просто закрыть приложение после сообщения
-            Platform.exit();
-        });
     }
 
     private void sendStateUpdateIfOnline() {
