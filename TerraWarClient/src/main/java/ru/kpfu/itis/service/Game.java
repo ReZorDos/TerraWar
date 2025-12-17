@@ -1,11 +1,13 @@
 package ru.kpfu.itis.service;
 
 import lombok.Getter;
+import lombok.Setter;
 import ru.kpfu.itis.model.Player;
 import java.util.ArrayList;
 import java.util.List;
 
 @Getter
+@Setter
 public class Game {
 
     private final List<Player> players;
