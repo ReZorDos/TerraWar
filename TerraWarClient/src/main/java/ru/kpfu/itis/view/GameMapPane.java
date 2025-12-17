@@ -42,6 +42,7 @@ public class GameMapPane extends VBox {
     private final PlacementController placementController;
     private final ImageCache imageCache;
     private final OnlineGameManager onlineGameManager;
+    private boolean gameFinished = false;
     private Unit selectedUnit = null;
     private List<Hex> actionHexes = null;
 
@@ -120,6 +121,7 @@ public class GameMapPane extends VBox {
                 initializeMap();
                 updateTurnInfo();
                 refreshHighlights();
+                checkGameEndCondition();
             });
             onlineGameManager.setOnError(error -> {
                 showAlert("Ошибка сети", error);
@@ -375,6 +377,9 @@ public class GameMapPane extends VBox {
 
     private void setupEventHandlers() {
         mapPane.setOnMouseClicked(event -> {
+            if (gameFinished) {
+                return;
+            }
             TexturedHexagon clickedHex = getHexAtPixel(event.getX(), event.getY());
             if (clickedHex != null) {
                 handleHexClick(clickedHex);
@@ -384,6 +389,10 @@ public class GameMapPane extends VBox {
     }
 
     private void handleHexClick(TexturedHexagon clickedHex) {
+        if (gameFinished) {
+            return;
+        }
+
         if (onlineGameManager != null && onlineGameManager.isConnected() && !onlineGameManager.isMyTurn()) {
             return;
         }
@@ -419,6 +428,7 @@ public class GameMapPane extends VBox {
                 updateTurnInfo();
                 initializeMap();
                 sendStateUpdateIfOnline();
+                checkGameEndCondition();
             }
             return;
         }
@@ -481,6 +491,10 @@ public class GameMapPane extends VBox {
     }
 
     private void endTurn() {
+        if (gameFinished) {
+            return;
+        }
+
         if (onlineGameManager == null || !onlineGameManager.isConnected()) {
             showAlert("Ошибка", "Нет подключения к серверу. Завершите приложение.");
             return;
@@ -504,6 +518,67 @@ public class GameMapPane extends VBox {
         refreshHighlights();
         updateTurnInfo();
         initializeMap();
+        checkGameEndCondition();
+    }
+
+    /**
+     * Проверяет, не закрашены ли все клетки одним игроком.
+     * Если да — завершает игру и показывает сообщение о победителе.
+     */
+    private void checkGameEndCondition() {
+        if (gameFinished) {
+            return;
+        }
+
+        int winnerId = -1;
+        boolean hasOwnedCells = false;
+
+        for (int y = 0; y < gameMap.getHeight(); y++) {
+            for (int x = 0; x < gameMap.getWidth(); x++) {
+                Hex hex = gameMap.getHex(x, y);
+                if (hex == null) {
+                    continue;
+                }
+
+                int ownerId = hex.getOwnerId();
+                // Если есть нейтральная клетка — победы ещё нет
+                if (ownerId == -1) {
+                    return;
+                }
+
+                if (!hasOwnedCells) {
+                    winnerId = ownerId;
+                    hasOwnedCells = true;
+                } else if (ownerId != winnerId) {
+                    // Нашли клетку другого игрока — победы ещё нет
+                    return;
+                }
+            }
+        }
+
+        if (!hasOwnedCells) {
+            return;
+        }
+
+        gameFinished = true;
+
+        final int finalWinnerId = winnerId;
+        final String winnerName;
+        Player winner = game.getPlayers().stream()
+                .filter(p -> p.getId() == finalWinnerId)
+                .findFirst()
+                .orElse(null);
+        if (winner != null) {
+            winnerName = winner.getName();
+        } else {
+            winnerName = "Игрок " + (finalWinnerId + 1);
+        }
+
+        Platform.runLater(() -> {
+            showAlert("Игра окончена", "Победил " + winnerName + " — все клетки закрашены его цветом!");
+            // Можно просто закрыть приложение после сообщения
+            Platform.exit();
+        });
     }
 
     private void sendStateUpdateIfOnline() {
