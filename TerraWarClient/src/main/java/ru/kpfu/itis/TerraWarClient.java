@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import lombok.extern.slf4j.Slf4j;
 import ru.kpfu.itis.model.GameMap;
 import ru.kpfu.itis.model.Player;
 import ru.kpfu.itis.network.service.NetworkClient;
@@ -41,19 +42,17 @@ public class TerraWarClient extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         this.mainStage = stage;
-        System.setOut(new java.io.PrintStream(System.out, true, "UTF-8"));
-        System.setErr(new java.io.PrintStream(System.err, true, "UTF-8"));
 
-        log.info("Показываем диалог подключения...");
+        log.info("Showing connection dialog...");
         ConnectionResult connectionResult = ConnectionDialog.showAndWait();
 
         if (connectionResult == null) {
-            log.info("Пользователь отменил подключение");
+            log.info("User cancelled connection");
             System.exit(0);
             return;
         }
 
-        log.info("Подключаемся к серверу: {}:{}", connectionResult.getServerHost(), connectionResult.getServerPort());
+        log.info("Connecting to server: {}:{}", connectionResult.getServerHost(), connectionResult.getServerPort());
 
         WaitingScreen waitingScreen = new WaitingScreen();
         Stage waitingStage = new Stage();
@@ -63,7 +62,7 @@ public class TerraWarClient extends Application {
 
         NetworkClient tempNetworkClient = new NetworkClient(connectionResult.getServerHost(), connectionResult.getServerPort());
         
-        log.info("Пытаемся подключиться к серверу...");
+        log.info("Attempting to connect to server...");
         if (!tempNetworkClient.connect()) {
             waitingStage.close();
             Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -106,7 +105,7 @@ public class TerraWarClient extends Application {
                 
                 if ((allReady || stateMsg.isGameStarted()) && !gameStarted[0]) {
                     gameStarted[0] = true;
-                    System.out.println("Все игроки готовы! Запускаем игру...");
+                    log.info("All players ready! Starting game...");
                     Platform.runLater(() -> {
                         waitingStage.close();
                         initializeGame(connectionResult, players, tempNetworkClient);
@@ -156,8 +155,7 @@ public class TerraWarClient extends Application {
         int mapId = 0;
         if (myIndexOnServer == 0) {
             mapId = (int) (Math.random() * 5);
-            System.out.println("Выбрана случайная карта с id = " + mapId +
-                    " (" + MapFactory.getMapNameById(mapId) + ")");
+            log.info("Selected random map with id = {} ({})", mapId, MapFactory.getMapNameById(mapId));
         }
 
         gameMap = MapFactory.getMapById(mapId);
