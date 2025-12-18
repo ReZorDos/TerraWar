@@ -91,6 +91,11 @@ public class TerraWarClient extends Application {
                     waitingScreen.updatePlayers(players, stateMsg.getReadyPlayers(), connectionResult.getPlayerName());
                 });
                 
+                if (players.size() < 2) {
+                    log.debug("Not enough players to start game. Current: {}", players.size());
+                    return;
+                }
+                
                 Map<String, Boolean> readyPlayers = stateMsg.getReadyPlayers();
                 boolean allReady = false;
                 if (readyPlayers != null && players.size() >= 2) {
@@ -103,7 +108,7 @@ public class TerraWarClient extends Application {
                     }
                 }
                 
-                if ((allReady || stateMsg.isGameStarted()) && !gameStarted[0]) {
+                if (allReady && !gameStarted[0] && players.size() >= 2) {
                     gameStarted[0] = true;
                     log.info("All players ready! Starting game...");
                     Platform.runLater(() -> {

@@ -33,7 +33,9 @@ public class GameState {
         }
 
         if (wasCurrent) {
-            currentTurn = removedIndex % players.size();
+            if (currentTurn >= players.size()) {
+                currentTurn = 0;
+            }
         } else if (removedIndex >= 0 && removedIndex < currentTurn) {
             currentTurn = Math.max(0, currentTurn - 1);
         }

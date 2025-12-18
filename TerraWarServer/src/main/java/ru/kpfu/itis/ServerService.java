@@ -59,10 +59,14 @@ public class ServerService {
         
         if (lastStateSnapshot != null) {
             cleanPlayerDataFromState(leavingPlayerNick);
+            if (gameState.getPlayers().size() < 2) {
+                log.info("Game stopped: not enough players. Remaining: {}", gameState.getPlayers().size());
+                lastStateSnapshot = null;
+            }
         }
         
         broadcastGameState();
-        log.info("Удален игрок: {}", leavingPlayerNick);
+        log.info("Removed player: {}", leavingPlayerNick);
     }
 
     private void cleanPlayerDataFromState(String playerNick) {
@@ -97,12 +101,13 @@ public class ServerService {
     }
 
     public void broadcastGameState() {
+        boolean gameStarted = lastStateSnapshot != null && gameState.getPlayers().size() >= 2 && gameState.areAllPlayersReady();
         GameStateMessage gameStateMessage = new GameStateMessage(
                 gameState.getPlayers(),
                 gameState.getCurrentTurn(),
                 lastStateSnapshot,
                 gameState.getReadyPlayers(),
-                lastStateSnapshot != null
+                gameStarted
         );
         broadcast(new MessageEnvelope("state", gameStateMessage));
     }
@@ -114,6 +119,10 @@ public class ServerService {
         }
 
         if (lastStateSnapshot == null) {
+            if (gameState.getPlayers().size() < 2) {
+                log.warn("State update rejected: not enough players. Current: {}", gameState.getPlayers().size());
+                return false;
+            }
             boolean allReady = gameState.areAllPlayersReady();
             log.info("First state update from {}. All ready: {}", handler.getNick(), allReady);
             if (!allReady) {
@@ -122,6 +131,10 @@ public class ServerService {
             }
             log.info("All players ready! Starting game with state from {}", handler.getNick());
         } else {
+            if (gameState.getPlayers().size() < 2) {
+                log.warn("State update rejected: not enough players. Current: {}", gameState.getPlayers().size());
+                return false;
+            }
             if (!gameState.isPlayersTurn(handler.getNick())) {
                 log.warn("State update rejected: not {} turn. Current: {}", handler.getNick(), gameState.getCurrentPlayerNick());
                 return false;
@@ -133,8 +146,15 @@ public class ServerService {
     }
 
     public void handleLeave(PlayerHandler handler) {
-        log.info("Игрок сдался: {}", handler.getNick());
+        log.info("Player left: {}", handler.getNick());
+        String leavingNick = handler.getNick();
+        boolean wasCurrentTurn = gameState.isPlayersTurn(leavingNick);
         removePlayer(handler);
+        
+        if (wasCurrentTurn && gameState.getPlayers().size() > 0) {
+            gameState.nextTurn();
+            log.info("Turn advanced to next player after {} left", leavingNick);
+        }
     }
     
     public void handleReady(PlayerHandler handler, ReadyMessage msg) {
