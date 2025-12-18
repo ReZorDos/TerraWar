@@ -18,6 +18,7 @@ import ru.kpfu.itis.view.GameMapPane;
 import ru.kpfu.itis.view.WaitingScreen;
 
 import java.util.List;
+import java.util.Random;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -131,7 +132,10 @@ public class TerraWarClient extends Application {
         farmManager = new FarmManager(game, playerService);
         farmShop = new FarmShop(farmManager);
 
-        gameMap = MapFactory.getMapById(0);
+        long seed = serverPlayers.stream().sorted().mapToLong(String::hashCode).sum();
+        Random random = new Random(seed);
+        int mapId = random.nextInt(5);
+        gameMap = MapFactory.getMapById(mapId, seed);
         gameMapService = new GameMapService(gameMap);
 
         towerManager = new TowerManager(game, playerService, gameMapService);

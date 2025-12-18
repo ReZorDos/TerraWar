@@ -4,6 +4,8 @@ import ru.kpfu.itis.model.GameMap;
 import ru.kpfu.itis.model.Hex;
 import ru.kpfu.itis.enums.Type;
 
+import java.util.*;
+
 public class MapFactory {
 
     public static GameMap createPeninsulaMap() {
@@ -31,11 +33,6 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, peninsula);
-        setStartingZones(map,
-                new int[][]{{5, 4}, {5, 5}, {6, 4}, {6, 5}, {6, 6}},
-                new int[][]{{13, 12}, {13, 13}, {12, 13}, {12, 12}, {13, 11}},
-                new int[][]{{5, 13}, {5, 14}, {6, 13}, {6, 14}, {6, 15}},
-                new int[][]{{13, 4}, {13, 5}, {12, 4}, {12, 5}, {13, 6}});
         return map;
     }
 
@@ -64,11 +61,6 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, sShaped);
-        setStartingZones(map, 
-                new int[][]{{5, 4}, {6, 4}, {5, 5}, {6, 5}, {5, 6}},
-                new int[][]{{14, 11}, {15, 11}, {14, 10}, {15, 10}, {13, 10}},
-                new int[][]{{5, 13}, {6, 13}, {5, 14}, {6, 14}, {5, 15}},
-                new int[][]{{14, 4}, {15, 4}, {14, 5}, {15, 5}, {13, 5}});
         return map;
     }
 
@@ -97,11 +89,6 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, star);
-        setStartingZones(map, 
-                new int[][]{{4, 7}, {5, 6}, {4, 6}, {5, 7}, {5, 8}},
-                new int[][]{{14, 7}, {13, 8}, {14, 8}, {13, 7}, {13, 6}},
-                new int[][]{{9, 3}, {9, 4}, {8, 4}, {10, 4}, {9, 5}},
-                new int[][]{{9, 11}, {9, 12}, {8, 12}, {10, 12}, {9, 13}});
         return map;
     }
 
@@ -130,11 +117,6 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, tShaped);
-        setStartingZones(map, 
-                new int[][]{{5, 4}, {5, 5}, {6, 4}, {4, 4}, {6, 5}},
-                new int[][]{{14, 14}, {14, 15}, {13, 14}, {15, 14}, {13, 15}},
-                new int[][]{{5, 13}, {5, 14}, {6, 13}, {4, 13}, {6, 14}},
-                new int[][]{{14, 4}, {14, 5}, {13, 4}, {15, 4}, {13, 5}});
         return map;
     }
 
@@ -163,11 +145,6 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, cShaped);
-        setStartingZones(map, 
-                new int[][]{{4, 4}, {5, 4}, {4, 5}, {5, 5}, {4, 6}},
-                new int[][]{{14, 11}, {14, 12}, {13, 11}, {13, 12}, {14, 10}},
-                new int[][]{{4, 13}, {5, 13}, {4, 14}, {5, 14}, {4, 15}},
-                new int[][]{{14, 4}, {14, 5}, {13, 4}, {13, 5}, {14, 6}});
         return map;
     }
 
@@ -186,54 +163,197 @@ public class MapFactory {
 
     private static void setStartingZones(GameMap map, int[][] player0Positions, int[][] player1Positions, 
                                          int[][] player2Positions, int[][] player3Positions) {
-        for (int i = 0; i < player0Positions.length; i++) {
-            int x = player0Positions[i][0];
-            int y = player0Positions[i][1];
-            Hex hex = map.getHex(x, y);
-            if (hex != null) {
-                hex.setOwnerId(0);
-                if (i == 0) {
-                    hex.setCapital(true);
+        setStartingZones(map, player0Positions, player1Positions, player2Positions, player3Positions, System.currentTimeMillis());
+    }
+    
+    private static void setStartingZones(GameMap map, int[][] player0Positions, int[][] player1Positions, 
+                                         int[][] player2Positions, int[][] player3Positions, long seed) {
+
+        List<int[]> capitals = findOptimalCapitalPositions(map, 4, seed);
+        
+        for (int i = 0; i < capitals.size() && i < 4; i++) {
+            int[] pos = capitals.get(i);
+            Hex capital = map.getHex(pos[0], pos[1]);
+            if (capital != null) {
+                capital.setOwnerId(i);
+                capital.setCapital(true);
+            }
+        }
+        
+
+        for (int i = 0; i < capitals.size() && i < 4; i++) {
+            int[] pos = capitals.get(i);
+            expandTerritory(map, pos[0], pos[1], i, 5);
+        }
+    }
+
+    private static List<int[]> findOptimalCapitalPositions(GameMap map, int numCapitals, long seed) {
+        List<int[]> landHexes = new ArrayList<>();
+        for (int y = 0; y < map.getHeight(); y++) {
+            for (int x = 0; x < map.getWidth(); x++) {
+                Hex hex = map.getHex(x, y);
+                if (hex != null && map.getGrid().get(y).get(x) != null) {
+                    landHexes.add(new int[]{x, y});
                 }
             }
         }
-        for (int i = 0; i < player1Positions.length; i++) {
-            int x = player1Positions[i][0];
-            int y = player1Positions[i][1];
-            Hex hex = map.getHex(x, y);
-            if (hex != null) {
-                hex.setOwnerId(1);
-                if (i == 0) {
-                    hex.setCapital(true);
+        
+        if (landHexes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        landHexes.sort((a, b) -> {
+            if (a[1] != b[1]) return Integer.compare(a[1], b[1]);
+            return Integer.compare(a[0], b[0]);
+        });
+        
+        List<int[]> capitals = new ArrayList<>();
+        
+        Random random = new Random(seed);
+        int firstIndex = random.nextInt(landHexes.size());
+        capitals.add(landHexes.get(firstIndex));
+        
+        for (int i = 1; i < numCapitals; i++) {
+            int[] bestPos = null;
+            double maxMinDistance = -1;
+            
+            for (int[] candidate : landHexes) {
+                boolean alreadyChosen = false;
+                for (int[] existing : capitals) {
+                    if (existing[0] == candidate[0] && existing[1] == candidate[1]) {
+                        alreadyChosen = true;
+                        break;
+                    }
+                }
+                if (alreadyChosen) continue;
+                
+                double minDistance = Double.MAX_VALUE;
+                for (int[] existing : capitals) {
+                    double dist = hexDistance(candidate[0], candidate[1], existing[0], existing[1]);
+                    minDistance = Math.min(minDistance, dist);
+                }
+                
+                if (minDistance > maxMinDistance) {
+                    maxMinDistance = minDistance;
+                    bestPos = candidate;
+                }
+            }
+            
+            if (bestPos != null) {
+                capitals.add(bestPos);
+            } else {
+                List<int[]> available = new ArrayList<>();
+                for (int[] hex : landHexes) {
+                    boolean isChosen = false;
+                    for (int[] cap : capitals) {
+                        if (hex[0] == cap[0] && hex[1] == cap[1]) {
+                            isChosen = true;
+                            break;
+                        }
+                    }
+                    if (!isChosen) {
+                        available.add(hex);
+                    }
+                }
+                if (!available.isEmpty()) {
+                    capitals.add(available.get(random.nextInt(available.size())));
                 }
             }
         }
-        for (int i = 0; i < player2Positions.length; i++) {
-            int x = player2Positions[i][0];
-            int y = player2Positions[i][1];
-            Hex hex = map.getHex(x, y);
-            if (hex != null) {
-                hex.setOwnerId(2);
-                if (i == 0) {
-                    hex.setCapital(true);
+        
+        return capitals;
+    }
+
+    private static double hexDistance(int x1, int y1, int x2, int y2) {
+        // Используем гексагональное расстояние (кубические координаты)
+        // Конвертируем в кубические координаты для гексагональной сетки
+        int q1 = x1;
+        int r1 = y1 - (x1 - (x1 & 1)) / 2;
+        int q2 = x2;
+        int r2 = y2 - (x2 - (x2 & 1)) / 2;
+        
+        int s1 = -q1 - r1;
+        int s2 = -q2 - r2;
+        
+        return (Math.abs(q1 - q2) + Math.abs(r1 - r2) + Math.abs(s1 - s2)) / 2.0;
+    }
+
+    private static void expandTerritory(GameMap map, int startX, int startY, int ownerId, int size) {
+        Hex startHex = map.getHex(startX, startY);
+        if (startHex == null) return;
+        
+        Set<String> claimed = new HashSet<>();
+        Queue<int[]> queue = new LinkedList<>();
+        queue.offer(new int[]{startX, startY});
+        claimed.add(startX + "," + startY);
+        
+        // Направления для гексагональной сетки (с учетом смещения четных/нечетных строк)
+        int[][] directions = new int[][]{
+            {1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}  // для четных строк
+        };
+        int[][] directionsOdd = new int[][]{
+            {1, 0}, {1, 1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}  // для нечетных строк
+        };
+        
+        int claimedCount = 1; // столица уже заявлена
+        
+        while (!queue.isEmpty() && claimedCount < size) {
+            int[] current = queue.poll();
+            int cx = current[0];
+            int cy = current[1];
+            
+            int[][] dirs = (cy % 2 == 0) ? directions : directionsOdd;
+            
+            List<int[]> neighbors = new ArrayList<>();
+            for (int[] dir : dirs) {
+                int nx = cx + dir[0];
+                int ny = cy + dir[1];
+                String key = nx + "," + ny;
+                
+                if (!claimed.contains(key)) {
+                    Hex neighbor = map.getHex(nx, ny);
+                    // Проверяем, что это сухопутный гекс (не море) и не занят другим игроком
+                    if (neighbor != null && neighbor.getOwnerId() == -1) {
+                        // Дополнительная проверка, что в grid это не null (не море)
+                        if (nx >= 0 && nx < map.getWidth() && ny >= 0 && ny < map.getHeight()) {
+                            Hex gridHex = map.getGrid().get(ny).get(nx);
+                            if (gridHex != null) {
+                                neighbors.add(new int[]{nx, ny});
+                            }
+                        }
+                    }
                 }
             }
-        }
-        for (int i = 0; i < player3Positions.length; i++) {
-            int x = player3Positions[i][0];
-            int y = player3Positions[i][1];
-            Hex hex = map.getHex(x, y);
-            if (hex != null) {
-                hex.setOwnerId(3);
-                if (i == 0) {
-                    hex.setCapital(true);
+            
+            neighbors.sort((a, b) -> {
+                int distA = Math.abs(a[0] - startX) + Math.abs(a[1] - startY);
+                int distB = Math.abs(b[0] - startX) + Math.abs(b[1] - startY);
+                return Integer.compare(distA, distB);
+            });
+            
+            for (int[] neighbor : neighbors) {
+                if (claimedCount >= size) break;
+                
+                String key = neighbor[0] + "," + neighbor[1];
+                if (!claimed.contains(key)) {
+                    Hex hex = map.getHex(neighbor[0], neighbor[1]);
+                    if (hex != null && hex.getOwnerId() == -1) {
+                        hex.setOwnerId(ownerId);
+                        claimed.add(key);
+                        queue.offer(neighbor);
+                        claimedCount++;
+                    }
                 }
             }
         }
     }
 
     public static GameMap getMapById(int mapId) {
-        return switch (mapId) {
+        return getMapById(mapId, System.currentTimeMillis());
+    }
+    
+    public static GameMap getMapById(int mapId, long seed) {
+        GameMap map = switch (mapId) {
             case 0 -> createPeninsulaMap();
             case 1 -> createSShapedMap();
             case 2 -> createStarShapedMap();
@@ -241,6 +361,8 @@ public class MapFactory {
             case 4 -> createCShapedMap();
             default -> createPeninsulaMap();
         };
+        setStartingZones(map, null, null, null, null, seed);
+        return map;
     }
 
 }
