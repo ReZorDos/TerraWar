@@ -6,9 +6,6 @@ import ru.kpfu.itis.enums.Type;
 
 public class MapFactory {
 
-    /**
-     * КАРТА 1: БОЛЬШОЙ МАТЕРИК С ПОЛУОСТРОВАМИ
-     */
     public static GameMap createPeninsulaMap() {
         GameMap map = new GameMap(20, 19);
         int[][] peninsula = new int[][]{
@@ -42,9 +39,6 @@ public class MapFactory {
         return map;
     }
 
-    /**
-     * КАРТА 2: S-ОБРАЗНЫЙ КОНТИНЕНТ
-     */
     public static GameMap createSShapedMap() {
         GameMap map = new GameMap(20, 19);
         int[][] sShaped = new int[][]{
@@ -78,9 +72,6 @@ public class MapFactory {
         return map;
     }
 
-    /**
-     * КАРТА 3: ЗВЁЗДООБРАЗНЫЙ МАТЕРИК
-     */
     public static GameMap createStarShapedMap() {
         GameMap map = new GameMap(20, 19);
         int[][] star = new int[][]{
@@ -114,9 +105,6 @@ public class MapFactory {
         return map;
     }
 
-    /**
-     * КАРТА 4: Т-ОБРАЗНЫЙ МАТЕРИК
-     */
     public static GameMap createTShapedMap() {
         GameMap map = new GameMap(20, 19);
         int[][] tShaped = new int[][]{
@@ -150,9 +138,6 @@ public class MapFactory {
         return map;
     }
 
-    /**
-     * КАРТА 5: С-ОБРАЗНЫЙ МАТЕРИК
-     */
     public static GameMap createCShapedMap() {
         GameMap map = new GameMap(20, 19);
         int[][] cShaped = new int[][]{
@@ -186,79 +171,61 @@ public class MapFactory {
         return map;
     }
 
-    /**
-     * Размещение гексов по карте из шаблона (с водой по периметру)
-     * 1 = гекс (трава), 0 = пусто (вода/null)
-     */
     private static void placeHexesFromMap(GameMap map, int[][] pattern) {
         for (int y = 0; y < pattern.length && y < map.getHeight(); y++) {
             for (int x = 0; x < pattern[y].length && x < map.getWidth(); x++) {
                 if (pattern[y][x] == 1) {
-                    // Создаём новый гекс (Трава)
                     Hex hex = new Hex(x, y, Type.GRASS);
                     map.getGrid().get(y).set(x, hex);
                 } else {
-                    // Если 0, то гекса быть НЕ должно -> null (вода)
                     map.getGrid().get(y).set(x, null);
                 }
             }
         }
     }
 
-    /**
-     * Установка стартовых зон для четырех игроков
-     * @param map Карта игры
-     * @param player0Positions Стартовые позиции для Player 0 (RED)
-     * @param player1Positions Стартовые позиции для Player 1 (BLUE)
-     * @param player2Positions Стартовые позиции для Player 2 (GREEN)
-     * @param player3Positions Стартовые позиции для Player 3 (YELLOW)
-     */
     private static void setStartingZones(GameMap map, int[][] player0Positions, int[][] player1Positions, 
                                          int[][] player2Positions, int[][] player3Positions) {
-        // Player 0 (RED) - ID = 0
         for (int i = 0; i < player0Positions.length; i++) {
             int x = player0Positions[i][0];
             int y = player0Positions[i][1];
             Hex hex = map.getHex(x, y);
             if (hex != null) {
                 hex.setOwnerId(0);
-                if (i == 0) { // Первая позиция - столица
+                if (i == 0) {
                     hex.setCapital(true);
                 }
             }
         }
-        // Player 1 (BLUE) - ID = 1
         for (int i = 0; i < player1Positions.length; i++) {
             int x = player1Positions[i][0];
             int y = player1Positions[i][1];
             Hex hex = map.getHex(x, y);
             if (hex != null) {
                 hex.setOwnerId(1);
-                if (i == 0) { // Первая позиция - столица
+                if (i == 0) {
                     hex.setCapital(true);
                 }
             }
         }
-        // Player 2 (GREEN) - ID = 2
         for (int i = 0; i < player2Positions.length; i++) {
             int x = player2Positions[i][0];
             int y = player2Positions[i][1];
             Hex hex = map.getHex(x, y);
             if (hex != null) {
                 hex.setOwnerId(2);
-                if (i == 0) { // Первая позиция - столица
+                if (i == 0) {
                     hex.setCapital(true);
                 }
             }
         }
-        // Player 3 (YELLOW) - ID = 3
         for (int i = 0; i < player3Positions.length; i++) {
             int x = player3Positions[i][0];
             int y = player3Positions[i][1];
             Hex hex = map.getHex(x, y);
             if (hex != null) {
                 hex.setOwnerId(3);
-                if (i == 0) { // Первая позиция - столица
+                if (i == 0) {
                     hex.setCapital(true);
                 }
             }
@@ -276,40 +243,4 @@ public class MapFactory {
         };
     }
 
-    public static String getMapNameById(int mapId) {
-        return switch (mapId) {
-            case 0 -> "Материк с полуостровами";
-            case 1 -> "S-образный континент";
-            case 2 -> "Звёздообразный материк";
-            case 3 -> "Т-образный материк";
-            case 4 -> "С-образный материк";
-            default -> "Неизвестная карта";
-        };
-    }
-
-    public static String getMapDescriptionById(int mapId) {
-        return switch (mapId) {
-            case 0 -> "Единый континент с множеством полуостровов - контроль полуостровов даёт стратегическое преимущество";
-            case 1 -> "Волнистый континент в форме буквы S - движение и экспансия в одном направлении";
-            case 2 -> "Звёзда с пятью лучами из центра - контроль центра даёт доступ ко всем направлениям";
-            case 3 -> "Две большие области, связанные узким проливом - битва за стратегический проход";
-            case 4 -> "C-образный материк, как Индия - контроль побережья и внутренних регионов";
-            default -> "Описание недоступно";
-        };
-    }
-
-    public static GameMap[] getAllMaps() {
-        return new GameMap[]{
-                createPeninsulaMap(),
-                createSShapedMap(),
-                createStarShapedMap(),
-                createTShapedMap(),
-                createCShapedMap()
-        };
-    }
-
-    public static GameMap getRandomMap() {
-        int randomId = (int)(Math.random() * 5);
-        return getMapById(randomId);
-    }
 }

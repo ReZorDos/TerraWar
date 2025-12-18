@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import ru.kpfu.itis.dto.FullGameState;
 import ru.kpfu.itis.message.*;
 
@@ -19,6 +20,7 @@ import java.util.function.Consumer;
 
 @Getter
 @Setter
+@Slf4j
 public class NetworkClient {
 
     private final String serverHost;
@@ -50,7 +52,7 @@ public class NetworkClient {
             
             return true;
         } catch (IOException e) {
-            System.err.println("Failed to connect to server: " + e.getMessage());
+            log.error("Ошибка подключения к серверу: {}", e.getMessage(), e);
             connected.set(false);
             return false;
         }
@@ -81,7 +83,7 @@ public class NetworkClient {
             writer.println(json);
             writer.flush();
         } catch (Exception e) {
-            System.err.println("Failed to send message: " + e.getMessage());
+            log.error("Ошибка отправки сообщения: {}", e.getMessage(), e);
             disconnect();
         }
     }
@@ -107,12 +109,12 @@ public class NetworkClient {
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("Error parsing message from server: " + e.getMessage());
+                    log.error("Ошибка получения сообщения от сервера: {}", e.getMessage(), e);
                 }
             }
         } catch (IOException e) {
             if (connected.get()) {
-                System.err.println("Connection lost: " + e.getMessage());
+                log.error("Соединение потеряно: {}", e.getMessage(), e);
             }
         } finally {
             disconnect();
@@ -126,7 +128,7 @@ public class NetworkClient {
             writer.close();
             socket.close();
         } catch (IOException e) {
-            System.err.println("Error closing connection: " + e.getMessage());
+            log.error("Ошибка закрытия подключения: {}", e.getMessage(), e);
         }
     }
 

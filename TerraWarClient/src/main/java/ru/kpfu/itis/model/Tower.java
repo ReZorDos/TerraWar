@@ -10,7 +10,7 @@ public class Tower {
     private int ownerId;
     private int hexX;
     private int hexY;
-    private int level; // 1 или 2
+    private int level;
 
     public Tower(int id, int ownerId, int hexX, int hexY, int level) {
         this.id = id;
@@ -19,7 +19,6 @@ public class Tower {
         this.hexY = hexY;
         this.level = level;
     }
-
 
     public boolean canUnitPassThrough(int unitLevel) {
         if (unitLevel >= 3) {

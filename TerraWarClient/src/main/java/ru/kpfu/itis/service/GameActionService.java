@@ -1,10 +1,12 @@
 package ru.kpfu.itis.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ru.kpfu.itis.model.*;
 import java.util.*;
 
 @RequiredArgsConstructor
+@Slf4j
 public class GameActionService {
 
     private final GameMap gameMap;
@@ -165,7 +167,7 @@ public class GameActionService {
 
         String blockReason = canUnitMoveToHex(actingUnit, targetHex);
         if (blockReason != null) {
-            System.out.println(blockReason);
+            log.info(blockReason);
             return false;
         }
 

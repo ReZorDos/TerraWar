@@ -24,7 +24,6 @@ public class OnlineGameManager {
     private String myNickName;
     private int myPlayerIndex;
     private boolean isMyTurn = false;
-    // Запоминаем последний номер хода, чтобы не сбрасывать действия юнитов при каждом обновлении состояния
     private int lastServerTurn = -1;
     private List<String> serverPlayers;
     private Consumer<String> onErrorCallback;
@@ -104,7 +103,6 @@ public class OnlineGameManager {
                 if (myIndexOnServer >= 0) {
                     syncLocalGameState(serverPlayers, serverCurrentTurn);
                     isMyTurn = (serverCurrentTurn == myIndexOnServer);
-                    // Запускаем ход локально только когда наступил новый номер хода
                     if (isMyTurn && serverCurrentTurn != lastServerTurn) {
                         turnManager.startPlayerTurn();
                     } else {

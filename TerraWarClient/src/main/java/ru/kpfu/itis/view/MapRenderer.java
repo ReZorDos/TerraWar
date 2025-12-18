@@ -29,9 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Responsible for rendering map hexes and objects (units, farms, towers) on the pane.
- */
+
 public class MapRenderer {
     private final GameMap gameMap;
     private final Game game;
@@ -41,9 +39,7 @@ public class MapRenderer {
     private final Pane mapPane;
     private final Map<String, TexturedHexagon> hexagons = new HashMap<>();
     private final ImageCache imageCache;
-    // Храним StackPane для каждого юнита по его ID для анимации
     private final Map<Integer, StackPane> unitPanes = new HashMap<>();
-    // Храним анимации подпрыгивания для юнитов, которые ещё могут ходить
     private final Map<Integer, Timeline> unitBounceAnimations = new HashMap<>();
 
     public MapRenderer(GameMap gameMap,
@@ -63,7 +59,6 @@ public class MapRenderer {
     }
 
     public void initializeMap() {
-        // Останавливаем и удаляем анимации и панели юнитов перед очисткой
         for (Timeline timeline : unitBounceAnimations.values()) {
             timeline.stop();
         }
@@ -75,13 +70,12 @@ public class MapRenderer {
         
         mapPane.getChildren().clear();
         hexagons.clear();
-        unitPanes.clear(); // Очищаем полностью, юниты будут перерисованы
+        unitPanes.clear();
 
         for (int y = 0; y < gameMap.getHeight(); y++) {
             for (int x = 0; x < gameMap.getWidth(); x++) {
                 Hex hexData = gameMap.getHex(x, y);
 
-                // Если гекса нет (null), используем текстуру моря
                 Image baseTexture;
                 boolean isSea = false;
                 if (hexData == null) {
@@ -97,7 +91,6 @@ public class MapRenderer {
 
                 TexturedHexagon hexagon = new TexturedHexagon(x, y, baseTexture);
                 
-                // Если это море - убираем границы
                 if (isSea) {
                     hexagon.setStroke(Color.TRANSPARENT);
                     hexagon.setStrokeWidth(0);
@@ -109,7 +102,6 @@ public class MapRenderer {
             }
         }
 
-        // Перерисовываем юнитов заново
         drawUnits();
         drawFarms();
         drawTowers();
@@ -132,7 +124,7 @@ public class MapRenderer {
 
     private Image getTextureForHex(Hex hexData) {
         if (hexData.getOwnerId() == -1) {
-            return imageCache.get("hex_desert"); // Нейтральные - пустыня
+            return imageCache.get("hex_desert");
         }
         return switch (hexData.getOwnerId()) {
             case 0 -> imageCache.get("hex_grass_red");
@@ -151,13 +143,11 @@ public class MapRenderer {
         List<Unit> allUnits = unitManager.getAllUnits();
         Set<Integer> currentUnitIds = new HashSet<>();
         
-        // Обрабатываем все юниты
         for (Unit unit : allUnits) {
             currentUnitIds.add(unit.getId());
             drawUnitImageWithNumber(unit);
         }
         
-        // Удаляем панели и анимации юнитов, которых больше нет
         unitPanes.entrySet().removeIf(entry -> {
             int unitId = entry.getKey();
             if (!currentUnitIds.contains(unitId)) {
@@ -198,7 +188,6 @@ public class MapRenderer {
         StackPane stackPane = unitPanes.get(unit.getId());
         
         if (stackPane == null) {
-            // Создаём новый StackPane для юнита
             stackPane = new StackPane();
             stackPane.setPickOnBounds(false);
 
@@ -225,18 +214,13 @@ public class MapRenderer {
             stackPane.setPrefSize(stackWidth, stackHeight);
             stackPane.setLayoutX(targetX);
             stackPane.setLayoutY(targetY);
-            // Сбрасываем вертикальный сдвиг анимации
             stackPane.setTranslateY(0);
             
             unitPanes.put(unit.getId(), stackPane);
-            // Убеждаемся, что панель добавлена в mapPane
             if (!mapPane.getChildren().contains(stackPane)) {
                 mapPane.getChildren().add(stackPane);
             }
         } else {
-            // Юнит уже существует - обновляем уровень и анимируем перемещение
-            
-            // Обновляем уровень юнита, если он изменился
             Text levelText = (Text) stackPane.getChildren().stream()
                     .filter(node -> "UNIT_LEVEL_TEXT".equals(node.getUserData()))
                     .findFirst()
@@ -245,7 +229,6 @@ public class MapRenderer {
                 levelText.setText(String.valueOf(unit.getLevel()));
             }
             
-            // Обновляем изображение юнита, если уровень изменился
             ImageView unitImage = (ImageView) stackPane.getChildren().stream()
                     .filter(node -> "UNIT_IMAGE".equals(node.getUserData()))
                     .findFirst()
@@ -257,18 +240,14 @@ public class MapRenderer {
                 }
             }
             
-            // Убеждаемся, что панель всё ещё в mapPane
             if (!mapPane.getChildren().contains(stackPane)) {
                 mapPane.getChildren().add(stackPane);
             }
             
-            // Анимируем перемещение
             double currentX = stackPane.getLayoutX();
             double currentY = stackPane.getLayoutY();
             
-            // Анимируем только если позиция действительно изменилась
             if (Math.abs(currentX - targetX) > 0.5 || Math.abs(currentY - targetY) > 0.5) {
-                // Создаём плавную анимацию перемещения
                 Timeline timeline = new Timeline();
                 
                 KeyFrame startFrame = new KeyFrame(
@@ -287,22 +266,15 @@ public class MapRenderer {
                 timeline.setCycleCount(1);
                 timeline.play();
             } else {
-                // Если позиция почти не изменилась, просто обновляем
                 stackPane.setLayoutX(targetX);
                 stackPane.setLayoutY(targetY);
             }
         }
 
         stackPane.setUserData("UNIT_STACK_" + unit.getHexX() + "_" + unit.getHexY());
-
-        // Обновляем/запускаем анимацию подпрыгивания в зависимости от того, может ли юнит ходить
         updateUnitBounceAnimation(unit, stackPane);
     }
 
-    /**
-     * Включает плавную анимацию подпрыгивания для юнитов, которые ещё могут ходить
-     * и принадлежат текущему игроку. После хода (hasActed = true) анимация отключается.
-     */
     private void updateUnitBounceAnimation(Unit unit, StackPane stackPane) {
         boolean isCurrentPlayersUnit = unit.getOwnerId() == game.getCurrentPlayer().getId();
         boolean shouldBounce = isCurrentPlayersUnit && unit.canAct();
@@ -311,17 +283,14 @@ public class MapRenderer {
         Timeline existingTimeline = unitBounceAnimations.get(unitId);
 
         if (!shouldBounce) {
-            // Анимация не нужна — останавливаем и убираем
             if (existingTimeline != null) {
                 existingTimeline.stop();
                 unitBounceAnimations.remove(unitId);
             }
-            // Сбрасываем возможный сдвиг, чтобы юнит стоял ровно
             stackPane.setTranslateY(0);
             return;
         }
 
-        // Если анимация уже есть — убеждаемся, что она привязана к нужному узлу и запущена
         if (existingTimeline != null) {
             if (existingTimeline.getStatus() != Timeline.Status.RUNNING) {
                 existingTimeline.play();
@@ -329,8 +298,7 @@ public class MapRenderer {
             return;
         }
 
-        // Создаём новую плавную анимацию подпрыгивания
-        double jumpHeight = Hexagon.SIZE * 0.15; // лёгкое подпрыгивание
+        double jumpHeight = Hexagon.SIZE * 0.15;
 
         Timeline bounce = new Timeline(
                 new KeyFrame(
