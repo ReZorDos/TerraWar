@@ -7,6 +7,7 @@ import lombok.Setter;
 import ru.kpfu.itis.dto.FullGameState;
 
 import java.util.List;
+import java.util.Map;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,6 +18,8 @@ public class GameStateMessage {
     private List<String> players;
     private int currentTurn;
     private FullGameState stateSnapshot;
+    private Map<String, Boolean> readyPlayers;
+    private boolean gameStarted;
 
 }
 

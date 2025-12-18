@@ -1,15 +1,19 @@
 package ru.kpfu.itis;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GameState {
 
     private final List<String> players = new ArrayList<>();
+    private final Map<String, Boolean> readyPlayers = new HashMap<>();
     private int currentTurn = 0;
 
     public synchronized void addPlayer(String nick) {
         players.add(nick);
+        readyPlayers.put(nick, false);
     }
 
     public synchronized void removePlayer(String nick) {
@@ -20,6 +24,7 @@ public class GameState {
 
         if (removedIndex >= 0) {
             players.remove(removedIndex);
+            readyPlayers.remove(nick);
         }
 
         if (players.isEmpty()) {
@@ -32,6 +37,24 @@ public class GameState {
         } else if (removedIndex >= 0 && removedIndex < currentTurn) {
             currentTurn = Math.max(0, currentTurn - 1);
         }
+    }
+    
+    public synchronized void setPlayerReady(String nick, boolean ready) {
+        readyPlayers.put(nick, ready);
+    }
+    
+    public synchronized Map<String, Boolean> getReadyPlayers() {
+        return new HashMap<>(readyPlayers);
+    }
+    
+    public synchronized boolean areAllPlayersReady() {
+        if (players.size() < 2) return false;
+        for (String player : players) {
+            if (!readyPlayers.getOrDefault(player, false)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public synchronized List<String> getPlayers() {

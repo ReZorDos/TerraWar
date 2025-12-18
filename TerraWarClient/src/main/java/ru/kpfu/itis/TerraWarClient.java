@@ -18,7 +18,7 @@ import ru.kpfu.itis.view.GameMapPane;
 import ru.kpfu.itis.view.WaitingScreen;
 
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Map;
 
 @Slf4j
 public class TerraWarClient extends Application {
@@ -78,6 +78,10 @@ public class TerraWarClient extends Application {
 
         tempNetworkClient.sendConnect(connectionResult.getPlayerName(), -1);
 
+        waitingScreen.setOnReadyCallback(ready -> {
+            tempNetworkClient.sendReady(ready);
+        });
+
         final boolean[] gameStarted = {false};
         tempNetworkClient.setOnStateReceived(stateMsg -> {
             if (gameStarted[0]) return;
@@ -85,11 +89,24 @@ public class TerraWarClient extends Application {
             List<String> players = stateMsg.getPlayers();
             if (players != null) {
                 Platform.runLater(() -> {
-                    waitingScreen.updatePlayers(players);
+                    waitingScreen.updatePlayers(players, stateMsg.getReadyPlayers(), connectionResult.getPlayerName());
                 });
                 
-                if (players.size() >= 4 && !gameStarted[0]) {
+                Map<String, Boolean> readyPlayers = stateMsg.getReadyPlayers();
+                boolean allReady = false;
+                if (readyPlayers != null && players.size() >= 2) {
+                    allReady = true;
+                    for (String player : players) {
+                        if (!readyPlayers.getOrDefault(player, false)) {
+                            allReady = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if ((allReady || stateMsg.isGameStarted()) && !gameStarted[0]) {
                     gameStarted[0] = true;
+                    System.out.println("Все игроки готовы! Запускаем игру...");
                     Platform.runLater(() -> {
                         waitingStage.close();
                         initializeGame(connectionResult, players, tempNetworkClient);
@@ -125,13 +142,25 @@ public class TerraWarClient extends Application {
 
         game.startGame();
 
+        int myIndexOnServer = serverPlayers.indexOf(connectionResult.getPlayerName());
+        if (myIndexOnServer < 0) {
+            myIndexOnServer = 0;
+        }
+
         playerService = new PlayerService();
         unitManager = new UnitManager(game, playerService);
         unitShop = new UnitShop();
         farmManager = new FarmManager(game, playerService);
         farmShop = new FarmShop(farmManager);
 
-        gameMap = MapFactory.getMapById(0);
+        int mapId = 0;
+        if (myIndexOnServer == 0) {
+            mapId = (int) (Math.random() * 5);
+            System.out.println("Выбрана случайная карта с id = " + mapId +
+                    " (" + MapFactory.getMapNameById(mapId) + ")");
+        }
+
+        gameMap = MapFactory.getMapById(mapId);
         gameMapService = new GameMapService(gameMap);
 
         towerManager = new TowerManager(game, playerService, gameMapService);
@@ -159,11 +188,6 @@ public class TerraWarClient extends Application {
                 playerService,
                 turnManager
         );
-
-        int myIndexOnServer = serverPlayers.indexOf(connectionResult.getPlayerName());
-        if (myIndexOnServer < 0) {
-            myIndexOnServer = 0;
-        }
 
         onlineGameManager.setNetworkClient(networkClient, connectionResult.getPlayerName(), myIndexOnServer);
 
