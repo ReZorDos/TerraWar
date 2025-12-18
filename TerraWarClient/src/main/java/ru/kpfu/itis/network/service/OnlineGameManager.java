@@ -100,9 +100,12 @@ public class OnlineGameManager {
             
             if (serverPlayers != null && !serverPlayers.isEmpty() &&
                 serverCurrentTurn >= 0 && serverCurrentTurn < serverPlayers.size()) {
+                syncLocalGameState(serverPlayers, serverCurrentTurn);
+                
                 int myIndexOnServer = findMyPlayerIndex(serverPlayers, myNickName);
                 if (myIndexOnServer >= 0) {
-                    syncLocalGameState(serverPlayers, serverCurrentTurn);
+                    myPlayerIndex = myIndexOnServer;
+                    
                     isMyTurn = (serverCurrentTurn == myIndexOnServer);
                     if (isMyTurn && serverCurrentTurn != lastServerTurn) {
                         turnManager.startPlayerTurn();
@@ -110,6 +113,9 @@ public class OnlineGameManager {
                         turnManager.setPlayerTurnActive(false);
                     }
                     lastServerTurn = serverCurrentTurn;
+                } else {
+                    isMyTurn = false;
+                    turnManager.setPlayerTurnActive(false);
                 }
             }
             if (onStateUpdatedCallback != null) {
