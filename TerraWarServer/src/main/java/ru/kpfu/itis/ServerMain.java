@@ -1,26 +1,28 @@
 package ru.kpfu.itis;
 
 import java.io.IOException;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ServerMain {
 
     public static void main(String[] args) {
         ServerService server = new ServerService();
         try {
             server.start();
-            System.out.println("Сервер запущен. Ожидаются подключения игроков...");
+            log.info("Сервер запущен. Ожидаются подключения игроков...");
 
         } catch (IOException e) {
-            System.err.println("Не удалось запустить сервер: " + e.getMessage());
+            log.error("Не удалось запустить сервер: {}", e.getMessage(), e);
             return;
         }
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 server.stop();
-                System.out.println("Сервер остановлен.");
+                log.info("Сервер остановлен.");
             } catch (IOException e) {
-                System.err.println("Ошибка при остановке сервера: " + e.getMessage());
+                log.error("Ошибка остановки сервера: {}", e.getMessage(), e);
             }
         }));
 

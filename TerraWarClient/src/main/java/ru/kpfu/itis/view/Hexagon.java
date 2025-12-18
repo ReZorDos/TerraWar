@@ -44,10 +44,4 @@ public class Hexagon extends Polygon {
         return new double[]{centerX, centerY};
     }
 
-    public void setColor(Color color) {
-        setFill(color);
-        setStroke(Color.BLACK);
-        setStrokeWidth(1.0);
-    }
-
 }

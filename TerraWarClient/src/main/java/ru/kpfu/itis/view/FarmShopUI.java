@@ -14,9 +14,6 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import ru.kpfu.itis.service.FarmShop;
 
-/**
- * UI диалог для покупки ферм с картинками
- */
 public class FarmShopUI {
 
     private final FarmShop farmShop;
@@ -40,7 +37,6 @@ public class FarmShopUI {
         root.setAlignment(Pos.CENTER);
         root.setStyle("-fx-padding: 30; -fx-background-color: #f0f0f0;");
 
-        // Заголовок
         Label titleLabel = new Label("Покупка фермы");
         titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 22));
         titleLabel.setTextFill(Color.BLACK);
@@ -50,36 +46,30 @@ public class FarmShopUI {
         moneyLabel.setTextFill(Color.DARKGREEN);
         moneyLabel.setStyle("-fx-font-weight: bold;");
 
-        // Контейнер для фермы
         VBox farmBox = new VBox(18);
         farmBox.setAlignment(Pos.CENTER);
         farmBox.setStyle("-fx-border-color: #cccccc; -fx-border-width: 2; -fx-padding: 25; -fx-border-radius: 8;");
         farmBox.setPrefWidth(350);
 
-        // Картинка фермы
         Image farmImage = imageCache.get("farm");
         ImageView farmImageView = new ImageView(farmImage);
         farmImageView.setFitWidth(120);
         farmImageView.setFitHeight(120);
         farmImageView.setPreserveRatio(true);
 
-        // Название
         Label nameLabel = new Label("Ферма");
         nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
 
-        // Описание
         Label descLabel = new Label("Генерирует доход в конце каждого хода\nПриносит по 2 монеты за ход\nМожно строить на своей территории");
         descLabel.setFont(Font.font("Arial", 13));
         descLabel.setTextFill(Color.DARKSLATEGRAY);
         descLabel.setStyle("-fx-text-alignment: center; -fx-line-spacing: 3;");
         descLabel.setWrapText(true);
 
-        // Цена
         int price = farmShop.getFarmPrice(playerId);
         Label priceLabel = new Label("Цена: " + price + " монет");
         priceLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
 
-        // Проверка доступности
         boolean canAfford = farmShop.canAffordFarm(playerMoney, playerId);
         if (!canAfford) {
             farmBox.setStyle("-fx-border-color: #ff6666; -fx-border-width: 2; -fx-padding: 25; -fx-border-radius: 8; -fx-opacity: 0.6;");
@@ -91,7 +81,6 @@ public class FarmShopUI {
 
         farmBox.getChildren().addAll(farmImageView, nameLabel, descLabel, priceLabel);
 
-        // Кнопки подтверждения
         HBox buttonsBox = new HBox(15);
         buttonsBox.setAlignment(Pos.CENTER);
         buttonsBox.setStyle("-fx-padding: 20;");
