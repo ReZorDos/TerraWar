@@ -32,19 +32,6 @@ public class GameTurnManager {
         }
     }
 
-    public void endPlayerTurn() {
-        if (!isPlayerTurnActive) return;
-
-        Player currentPlayer = game.getCurrentPlayer();
-        if (currentPlayer != null) {
-            currentPlayer.setMoney(currentPlayer.getMoney() + currentPlayer.getIncome());
-            checkAndHandleBankrot(currentPlayer.getId());
-        }
-
-        game.nextTurn();
-        isPlayerTurnActive = false;
-    }
-
     public void updatePlayerMoneyForTurnEnd(int playerId) {
         Player player = game.getPlayers().stream()
                 .filter(p -> p.getId() == playerId)

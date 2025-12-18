@@ -13,7 +13,6 @@ public class FullGameState {
 
     private int mapWidth;
     private int mapHeight;
-
     private List<HexState> hexes;
     private List<UnitState> units;
     private List<TowerState> towers;

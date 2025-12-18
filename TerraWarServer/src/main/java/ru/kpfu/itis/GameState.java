@@ -76,9 +76,4 @@ public class GameState {
         return current != null && current.equals(nick);
     }
 
-    public synchronized String getCurrentPlayerNick() {
-        if (players.isEmpty()) return null;
-        return players.get(currentTurn);
-    }
-
 }

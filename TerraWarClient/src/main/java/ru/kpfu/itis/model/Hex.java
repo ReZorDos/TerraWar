@@ -11,8 +11,8 @@ public class Hex {
     private final int x;
     private final int y;
     private Type type;
-    private int ownerId; // -1 ничейная
-    private int unitLevel; // 0 - нет юнита, 1,2,3... уровень войска
+    private int ownerId;
+    private int unitLevel;
     private boolean isCapital;
 
     public Hex(int x, int y, Type type) {

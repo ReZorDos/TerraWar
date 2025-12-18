@@ -12,7 +12,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Optional;
 import java.util.concurrent.*;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ServerService {
 
     private final ExecutorService acceptorPool = Executors.newSingleThreadExecutor();
@@ -24,18 +26,17 @@ public class ServerService {
 
     public void start() throws IOException {
         serverSocket = new ServerSocket(5555);
-        System.out.println("Server started on port " + 5555);
+        log.info("Сервер запустился, порт {}", 5555);
         acceptorPool.submit(() -> {
             try {
                 while (!serverSocket.isClosed()) {
                     Socket socket = serverSocket.accept();
-                    System.out.println("Accepted: " + socket.getInetAddress());
                     PlayerHandler handler = new PlayerHandler(socket, this);
                     players.add(handler);
                     clientPool.submit(handler);
                 }
             } catch (IOException e) {
-                System.err.println("Acceptor stopped: " + e.getMessage());
+                log.error("Получение остановлено: {}", e.getMessage(), e);
             }
         });
     }
@@ -48,7 +49,7 @@ public class ServerService {
 
     public void registerPlayer(ConnectPlayerMessage connectPlayerMessage) {
         gameState.addPlayer(connectPlayerMessage.getNickName());
-        System.out.println("Registered player: " + connectPlayerMessage.getNickName());
+        log.info("Зарегестрирован новый игрок: {}", connectPlayerMessage.getNickName());
     }
 
     public void removePlayer(PlayerHandler handler) {
@@ -61,7 +62,7 @@ public class ServerService {
         }
         
         broadcastGameState();
-        System.out.println("Removed player: " + leavingPlayerNick);
+        log.info("Удален игрок: {}", leavingPlayerNick);
     }
 
     private void cleanPlayerDataFromState(String playerNick) {
@@ -108,7 +109,7 @@ public class ServerService {
 
     public boolean applyClientState(PlayerHandler handler, FullGameState snapshot) {
         if (snapshot == null) {
-            System.out.println("State update rejected: null snapshot");
+            log.warn("Состояние не обновлено: snapshot null от {}", handler.getNick());
             return false;
         }
 
@@ -126,15 +127,13 @@ public class ServerService {
                 return false;
             }
         }
-
         lastStateSnapshot = snapshot;
         System.out.println("State update accepted from " + handler.getNick());
         return true;
     }
 
-    public void handleLeave(PlayerHandler handler, LeaveMessage msg) {
-        String reason = (msg != null) ? msg.getReason() : null;
-        System.out.println("Player leaving: " + handler.getNick() + (reason != null ? " (" + reason + ")" : ""));
+    public void handleLeave(PlayerHandler handler) {
+        log.info("Игрок сдался: {}", handler.getNick());
         removePlayer(handler);
     }
     

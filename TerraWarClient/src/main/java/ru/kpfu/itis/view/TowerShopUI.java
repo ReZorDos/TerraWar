@@ -149,7 +149,4 @@ public class TowerShopUI {
         return card;
     }
 
-    public Integer getSelectedLevel() {
-        return selectedLevel;
-    }
 }

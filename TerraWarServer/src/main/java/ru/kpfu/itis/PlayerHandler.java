@@ -13,7 +13,9 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class PlayerHandler implements Runnable {
 
     private final Socket socket;
@@ -39,7 +41,6 @@ public class PlayerHandler implements Runnable {
             writer.println(json);
             writer.flush();
         } catch (Exception e) {
-            System.err.println("Failed to send to " + nick + ": " + e.getMessage());
             shutdown();
         }
     }
@@ -60,7 +61,7 @@ public class PlayerHandler implements Runnable {
 
             String line;
             while (running.get() && (line = reader.readLine()) != null) {
-                System.out.println("Server read from " + socket.getInetAddress() + ": " + line);
+                log.debug("Сервер читает из {}: {}", socket.getInetAddress(), line);
                 try {
                     JsonElement jsonElement = JsonParser.parseString(line);
                     if (!jsonElement.isJsonObject()) continue;
@@ -90,7 +91,7 @@ public class PlayerHandler implements Runnable {
                         server.broadcastGameState();
                     } else if ("leave".equals(type)) {
                         LeaveMessage lm = gson.fromJson(dataEl, LeaveMessage.class);
-                        server.handleLeave(this, lm);
+                        server.handleLeave(this);
                         MessageResponse<String> resp = new MessageResponse<>(true, "left", null);
                         sendEnvelope(new MessageEnvelope("response", resp));
                     } else if ("ready".equals(type)) {
@@ -103,13 +104,13 @@ public class PlayerHandler implements Runnable {
                         sendEnvelope(new MessageEnvelope("response", resp));
                     }
                 } catch (Exception e) {
-                    System.err.println("Error handling message: " + e.getMessage());
+                    log.error("Error handling message: {}", e.getMessage(), e);
                     MessageResponse<String> resp = new MessageResponse<>(false, "server error: " + e.getMessage(), null);
                     sendEnvelope(new MessageEnvelope("response", resp));
                 }
             }
         } catch (IOException e) {
-            System.err.println("IO for player " + nick + " closed: " + e.getMessage());
+            log.error("Проблемы у {}: {}", nick, e.getMessage(), e);
         } finally {
             shutdown();
         }

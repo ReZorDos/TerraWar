@@ -20,6 +20,7 @@ import ru.kpfu.itis.view.WaitingScreen;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class TerraWarClient extends Application {
 
     private GameMap gameMap;
@@ -43,43 +44,38 @@ public class TerraWarClient extends Application {
         System.setOut(new java.io.PrintStream(System.out, true, "UTF-8"));
         System.setErr(new java.io.PrintStream(System.err, true, "UTF-8"));
 
-        System.out.println("Показываем диалог подключения...");
+        log.info("Показываем диалог подключения...");
         ConnectionResult connectionResult = ConnectionDialog.showAndWait();
-        System.out.println("Диалог закрыт. Результат: " + (connectionResult != null ? "OK" : "null"));
 
         if (connectionResult == null) {
-            System.out.println("Пользователь отменил подключение");
+            log.info("Пользователь отменил подключение");
             System.exit(0);
             return;
         }
 
-        System.out.println("Подключаемся к серверу: " + connectionResult.getServerHost() + ":" + connectionResult.getServerPort());
+        log.info("Подключаемся к серверу: {}:{}", connectionResult.getServerHost(), connectionResult.getServerPort());
 
         WaitingScreen waitingScreen = new WaitingScreen();
         Stage waitingStage = new Stage();
         waitingStage.setTitle("Ожидание игроков...");
         waitingStage.setScene(new Scene(waitingScreen, 400, 300));
         waitingStage.show();
-        System.out.println("Экран ожидания показан");
 
-        System.out.println("Создаем NetworkClient...");
         NetworkClient tempNetworkClient = new NetworkClient(connectionResult.getServerHost(), connectionResult.getServerPort());
         
-        System.out.println("Пытаемся подключиться к серверу...");
+        log.info("Пытаемся подключиться к серверу...");
         if (!tempNetworkClient.connect()) {
-            System.err.println("Не удалось подключиться к серверу");
             waitingStage.close();
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Ошибка подключения");
             alert.setHeaderText(null);
-            alert.setContentText("Не удалось подключиться к серверу " + connectionResult.getServerHost() + ":" + connectionResult.getServerPort() + 
+            alert.setContentText("Не удалось подключиться к серверу " + connectionResult.getServerHost() + ":" + connectionResult.getServerPort() +
                     "\nПроверьте, что сервер запущен и адрес указан правильно.");
             alert.showAndWait();
             System.exit(0);
             return;
         }
 
-        System.out.println("Отправляем сообщение о подключении: " + connectionResult.getPlayerName());
         tempNetworkClient.sendConnect(connectionResult.getPlayerName(), -1);
 
         waitingScreen.setOnReadyCallback(ready -> {
@@ -88,7 +84,6 @@ public class TerraWarClient extends Application {
 
         final boolean[] gameStarted = {false};
         tempNetworkClient.setOnStateReceived(stateMsg -> {
-            System.out.println("Получено состояние от сервера. Игроки: " + stateMsg.getPlayers());
             if (gameStarted[0]) return;
             
             List<String> players = stateMsg.getPlayers();
@@ -220,7 +215,7 @@ public class TerraWarClient extends Application {
             Scene scene = new Scene(gameMapPane, 1280, 860);
             scene.setFill(Color.web("#2b2b2b"));
             mainStage.setScene(scene);
-            mainStage.setTitle("TerraWar - Онлайн");
+            mainStage.setTitle("TerraWar");
             mainStage.setMaximized(true);
             mainStage.show();
         });

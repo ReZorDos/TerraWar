@@ -154,7 +154,4 @@ public class UnitShopUI {
         return card;
     }
 
-    public Integer getSelectedLevel() {
-        return selectedLevel;
-    }
 }

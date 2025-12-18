@@ -4,7 +4,9 @@ import javafx.scene.image.Image;
 
 import java.util.HashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ImageCache {
     private final Map<String, Image> cache = new HashMap<>();
 
@@ -52,7 +54,7 @@ public class ImageCache {
         try {
             var is = getClass().getResourceAsStream("/" + fileName);
             if (is == null) {
-                System.err.println("Не найдена картинка: " + fileName);
+                log.error("Не найдена картинка: {}", fileName);
                 return null;
             }
             Image image = new Image(is);
@@ -60,11 +62,12 @@ public class ImageCache {
                 cache.put(key, image);
                 return image;
             } else {
-                System.err.println("Ошибка загрузки " + fileName + ": " + image.getException().getMessage());
+                log.error("Ошибка загрузки {}: {}", fileName,
+                        image.getException() != null ? image.getException().getMessage() : "unknown");
                 return null;
             }
         } catch (Exception e) {
-            System.err.println("Ошибка загрузки " + fileName + ": " + e.getMessage());
+            log.error("Ошибка загрузки {}: {}", fileName, e.getMessage(), e);
             return null;
         }
     }
