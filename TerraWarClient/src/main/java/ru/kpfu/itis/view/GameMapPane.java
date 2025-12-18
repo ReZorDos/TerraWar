@@ -41,6 +41,7 @@ public class GameMapPane extends VBox {
     private final Label farmsLabel;
     private final Label towersLabel;
     private final Button endTurnButton;
+    private final Button surrenderButton;
     private final MapRenderer mapRenderer;
     private final PlacementController placementController;
     private final ImageCache imageCache;
@@ -113,6 +114,7 @@ public class GameMapPane extends VBox {
         farmsLabel = new Label();
         towersLabel = new Label();
         endTurnButton = new Button("Завершить ход");
+        surrenderButton = new Button("Сдаться");
         initializeUI();
         initializeMap();
         setupEventHandlers();
@@ -123,8 +125,20 @@ public class GameMapPane extends VBox {
                 updateCurrentPlayer();
                 initializeMap();
                 updateTurnInfo();
+                if (selectedUnit != null) {
+                    Unit updatedUnit = unitManager.getUnitAt(selectedUnit.getHexX(), selectedUnit.getHexY());
+                    if (updatedUnit != null && updatedUnit.getId() == selectedUnit.getId()) {
+                        selectedUnit = updatedUnit;
+                        actionHexes = gameActionService.calculateActionRadius(selectedUnit);
+                    } else {
+                        selectedUnit = null;
+                        actionHexes = null;
+                    }
+                }
                 refreshHighlights();
                 checkGameEndCondition();
+                checkIfPlayerRemoved();
+                checkWinByPlayerCount();
             });
             onlineGameManager.setOnError(error -> {
                 showAlert("Ошибка сети", error);
@@ -228,8 +242,32 @@ public class GameMapPane extends VBox {
         applyEndTurnButtonStyle(endTurnButton, false);
         endTurnButton.setOnMouseEntered(e -> applyEndTurnButtonStyle(endTurnButton, true));
         endTurnButton.setOnMouseExited(e -> applyEndTurnButtonStyle(endTurnButton, false));
+        
+        surrenderButton.setPrefWidth(140);
+        surrenderButton.setPrefHeight(35);
+        surrenderButton.setStyle(
+                "-fx-background-color: linear-gradient(to bottom, #e74c3c, #c0392b); " +
+                "-fx-text-fill: white; " +
+                "-fx-font-weight: bold; " +
+                "-fx-background-radius: 5;"
+        );
+        surrenderButton.setOnMouseEntered(e -> surrenderButton.setStyle(
+                "-fx-background-color: linear-gradient(to bottom, #c0392b, #a93226); " +
+                "-fx-text-fill: white; " +
+                "-fx-font-weight: bold; " +
+                "-fx-background-radius: 5;"
+        ));
+        surrenderButton.setOnMouseExited(e -> surrenderButton.setStyle(
+                "-fx-background-color: linear-gradient(to bottom, #e74c3c, #c0392b); " +
+                "-fx-text-fill: white; " +
+                "-fx-font-weight: bold; " +
+                "-fx-background-radius: 5;"
+        ));
 
-        box.getChildren().addAll(statsRow, endTurnButton);
+        VBox buttonsBox = new VBox(10);
+        buttonsBox.getChildren().addAll(endTurnButton, surrenderButton);
+
+        box.getChildren().addAll(statsRow, buttonsBox);
         return box;
     }
 
@@ -389,6 +427,7 @@ public class GameMapPane extends VBox {
             }
         });
         endTurnButton.setOnAction(event -> endTurn());
+        surrenderButton.setOnAction(event -> handleSurrender());
     }
 
     private void handleHexClick(TexturedHexagon clickedHex) {
@@ -524,6 +563,27 @@ public class GameMapPane extends VBox {
         checkGameEndCondition();
     }
 
+    private void checkWinByPlayerCount() {
+        if (gameFinished) {
+            return;
+        }
+        
+        if (onlineGameManager == null || !onlineGameManager.isConnected()) {
+            return;
+        }
+        
+        List<String> serverPlayers = onlineGameManager.getServerPlayers();
+        if (serverPlayers != null && serverPlayers.size() == 1) {
+            gameFinished = true;
+            String winnerName = serverPlayers.get(0);
+            
+            Platform.runLater(() -> {
+                showAlert("Игра окончена", "Победил " + winnerName + "! (Остальные игроки сдались)");
+                Platform.exit();
+            });
+        }
+    }
+
     private void checkGameEndCondition() {
         if (gameFinished) {
             return;
@@ -592,6 +652,54 @@ public class GameMapPane extends VBox {
         }
         
         endTurnButton.setDisable(!canPlay);
+        surrenderButton.setDisable(false);
+    }
+
+    private void handleSurrender() {
+        if (gameFinished) {
+            return;
+        }
+        
+        if (onlineGameManager == null || !onlineGameManager.isConnected()) {
+            showAlert("Ошибка", "Нет подключения к серверу");
+            return;
+        }
+        
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Сдача");
+        confirmAlert.setHeaderText(null);
+        confirmAlert.setContentText("Вы уверены, что хотите сдаться? Игра продолжится без вас.");
+        
+        confirmAlert.showAndWait().ifPresent(response -> {
+            if (response == javafx.scene.control.ButtonType.OK) {
+                onlineGameManager.sendSurrender();
+                Platform.runLater(() -> {
+                    showAlert("Сдача", "Вы сдались. Игра продолжается без вас.");
+                    Platform.exit();
+                });
+            }
+        });
+    }
+
+    private void checkIfPlayerRemoved() {
+        if (onlineGameManager == null || !onlineGameManager.isConnected()) {
+            return;
+        }
+        
+        List<String> serverPlayers = onlineGameManager.getServerPlayers();
+        if (serverPlayers != null) {
+            Player myPlayer = onlineGameManager.getMyPlayer();
+            if (myPlayer != null) {
+                boolean playerExists = serverPlayers.contains(myPlayer.getName());
+                if (!playerExists) {
+                    gameFinished = true;
+                    Platform.runLater(() -> {
+                        showAlert("Игра окончена", "Вы сдались. Игра продолжается без вас.");
+                        Platform.exit();
+                    });
+                }
+            }
+        }
     }
 
     public TexturedHexagon getHexAtPixel(double mouseX, double mouseY) {
