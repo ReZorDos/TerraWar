@@ -16,11 +16,13 @@ public class GameState {
         if (players.isEmpty()) return;
 
         int removedIndex = players.indexOf(nick);
-        boolean wasCurrent = removedIndex == currentTurn;
-
-        if (removedIndex >= 0) {
-            players.remove(removedIndex);
+        if (removedIndex < 0) {
+            return;
         }
+
+        boolean wasCurrent = removedIndex == currentTurn;
+        
+        players.remove(removedIndex);
 
         if (players.isEmpty()) {
             currentTurn = 0;
@@ -28,8 +30,8 @@ public class GameState {
         }
 
         if (wasCurrent) {
-            currentTurn = removedIndex % players.size();
-        } else if (removedIndex >= 0 && removedIndex < currentTurn) {
+            currentTurn = currentTurn % players.size();
+        } else if (removedIndex < currentTurn) {
             currentTurn = Math.max(0, currentTurn - 1);
         }
     }

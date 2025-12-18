@@ -8,6 +8,7 @@ import ru.kpfu.itis.model.GameMap;
 import ru.kpfu.itis.model.Player;
 import ru.kpfu.itis.service.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -133,9 +134,35 @@ public class OnlineGameManager {
     }
 
     private void syncLocalGameState(List<String> serverPlayers, int serverCurrentTurn) {
-        if (serverPlayers != null && serverCurrentTurn >= 0 && serverCurrentTurn < serverPlayers.size()) {
-            if (serverCurrentTurn < game.getPlayers().size()) {
-                game.setCurrentPlayerIndex(serverCurrentTurn);
+        if (serverPlayers == null || serverPlayers.isEmpty()) {
+            return;
+        }
+        List<Player> localPlayers = game.getPlayers();
+        localPlayers.removeIf(player -> !serverPlayers.contains(player.getName()));
+
+        List<Player> orderedPlayers = new ArrayList<>();
+        for (String serverPlayerName : serverPlayers) {
+            Player localPlayer = localPlayers.stream()
+                    .filter(p -> p.getName().equals(serverPlayerName))
+                    .findFirst()
+                    .orElse(null);
+            if (localPlayer != null) {
+                orderedPlayers.add(localPlayer);
+            }
+        }
+        localPlayers.clear();
+        localPlayers.addAll(orderedPlayers);
+        if (serverCurrentTurn >= 0 && serverCurrentTurn < serverPlayers.size()) {
+            String currentPlayerName = serverPlayers.get(serverCurrentTurn);
+            int localIndex = -1;
+            for (int i = 0; i < game.getPlayers().size(); i++) {
+                if (game.getPlayers().get(i).getName().equals(currentPlayerName)) {
+                    localIndex = i;
+                    break;
+                }
+            }
+            if (localIndex >= 0) {
+                game.setCurrentPlayerIndex(localIndex);
             }
         }
     }
