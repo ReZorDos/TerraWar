@@ -93,6 +93,11 @@ public class PlayerHandler implements Runnable {
                         server.handleLeave(this, lm);
                         MessageResponse<String> resp = new MessageResponse<>(true, "left", null);
                         sendEnvelope(new MessageEnvelope("response", resp));
+                    } else if ("ready".equals(type)) {
+                        ReadyMessage readyMsg = gson.fromJson(dataEl, ReadyMessage.class);
+                        server.handleReady(this, readyMsg);
+                        MessageResponse<String> resp = new MessageResponse<>(true, "ready status updated", null);
+                        sendEnvelope(new MessageEnvelope("response", resp));
                     } else {
                         MessageResponse<String> resp = new MessageResponse<>(false, "unknown type", null);
                         sendEnvelope(new MessageEnvelope("response", resp));

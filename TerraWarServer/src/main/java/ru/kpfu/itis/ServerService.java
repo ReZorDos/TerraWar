@@ -5,6 +5,7 @@ import ru.kpfu.itis.message.ConnectPlayerMessage;
 import ru.kpfu.itis.message.GameStateMessage;
 import ru.kpfu.itis.message.LeaveMessage;
 import ru.kpfu.itis.message.MessageEnvelope;
+import ru.kpfu.itis.message.ReadyMessage;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -98,7 +99,9 @@ public class ServerService {
         GameStateMessage gameStateMessage = new GameStateMessage(
                 gameState.getPlayers(),
                 gameState.getCurrentTurn(),
-                lastStateSnapshot
+                lastStateSnapshot,
+                gameState.getReadyPlayers(),
+                lastStateSnapshot != null
         );
         broadcast(new MessageEnvelope("state", gameStateMessage));
     }
@@ -109,12 +112,23 @@ public class ServerService {
             return false;
         }
 
-        if (!gameState.isPlayersTurn(handler.getNick())) {
-            System.out.println("State update rejected: not " + handler.getNick() + " turn. Current: " + gameState.getCurrentPlayerNick());
-            return false;
+        if (lastStateSnapshot == null) {
+            boolean allReady = gameState.areAllPlayersReady();
+            System.out.println("First state update from " + handler.getNick() + ". All ready: " + allReady);
+            if (!allReady) {
+                System.out.println("State update rejected: not all players ready. Ready status: " + gameState.getReadyPlayers());
+                return false;
+            }
+            System.out.println("All players ready! Starting game with state from " + handler.getNick());
+        } else {
+            if (!gameState.isPlayersTurn(handler.getNick())) {
+                System.out.println("State update rejected: not " + handler.getNick() + " turn. Current: " + gameState.getCurrentPlayerNick());
+                return false;
+            }
         }
 
         lastStateSnapshot = snapshot;
+        System.out.println("State update accepted from " + handler.getNick());
         return true;
     }
 
@@ -122,6 +136,17 @@ public class ServerService {
         String reason = (msg != null) ? msg.getReason() : null;
         System.out.println("Player leaving: " + handler.getNick() + (reason != null ? " (" + reason + ")" : ""));
         removePlayer(handler);
+    }
+    
+    public void handleReady(PlayerHandler handler, ReadyMessage msg) {
+        String nick = handler.getNick();
+        boolean ready = msg != null && msg.isReady();
+        gameState.setPlayerReady(nick, ready);
+        System.out.println("Player " + nick + " ready status: " + ready);
+        System.out.println("Current ready status: " + gameState.getReadyPlayers());
+        boolean allReady = gameState.areAllPlayersReady();
+        System.out.println("All players ready: " + allReady);
+        broadcastGameState();
     }
 
     public void broadcast(MessageEnvelope envelope) {

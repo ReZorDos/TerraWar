@@ -29,9 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Responsible for rendering map hexes and objects (units, farms, towers) on the pane.
- */
 public class MapRenderer {
     private final GameMap gameMap;
     private final Game game;
@@ -41,9 +38,7 @@ public class MapRenderer {
     private final Pane mapPane;
     private final Map<String, TexturedHexagon> hexagons = new HashMap<>();
     private final ImageCache imageCache;
-    // Храним StackPane для каждого юнита по его ID для анимации
     private final Map<Integer, StackPane> unitPanes = new HashMap<>();
-    // Храним анимации подпрыгивания для юнитов, которые ещё могут ходить
     private final Map<Integer, Timeline> unitBounceAnimations = new HashMap<>();
 
     public MapRenderer(GameMap gameMap,
@@ -63,7 +58,6 @@ public class MapRenderer {
     }
 
     public void initializeMap() {
-        // Останавливаем и удаляем анимации и панели юнитов перед очисткой
         for (Timeline timeline : unitBounceAnimations.values()) {
             timeline.stop();
         }
@@ -75,13 +69,12 @@ public class MapRenderer {
         
         mapPane.getChildren().clear();
         hexagons.clear();
-        unitPanes.clear(); // Очищаем полностью, юниты будут перерисованы
+        unitPanes.clear();
 
         for (int y = 0; y < gameMap.getHeight(); y++) {
             for (int x = 0; x < gameMap.getWidth(); x++) {
                 Hex hexData = gameMap.getHex(x, y);
 
-                // Если гекса нет (null), используем текстуру моря
                 Image baseTexture;
                 boolean isSea = false;
                 if (hexData == null) {
@@ -97,7 +90,6 @@ public class MapRenderer {
 
                 TexturedHexagon hexagon = new TexturedHexagon(x, y, baseTexture);
                 
-                // Если это море - убираем границы
                 if (isSea) {
                     hexagon.setStroke(Color.TRANSPARENT);
                     hexagon.setStrokeWidth(0);
@@ -109,7 +101,6 @@ public class MapRenderer {
             }
         }
 
-        // Перерисовываем юнитов заново
         drawUnits();
         drawFarms();
         drawTowers();
@@ -132,7 +123,7 @@ public class MapRenderer {
 
     private Image getTextureForHex(Hex hexData) {
         if (hexData.getOwnerId() == -1) {
-            return imageCache.get("hex_desert"); // Нейтральные - пустыня
+            return imageCache.get("hex_desert");
         }
         return switch (hexData.getOwnerId()) {
             case 0 -> imageCache.get("hex_grass_red");

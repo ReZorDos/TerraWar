@@ -5,9 +5,6 @@ import javafx.scene.image.Image;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * In-memory cache for images used on the game map.
- */
 public class ImageCache {
     private final Map<String, Image> cache = new HashMap<>();
 
@@ -37,7 +34,6 @@ public class ImageCache {
         Image pinkTexture = loadSafe("hex_grass_pink.png", "hex_grass_pink");
         loadSafe("sea_texture.png", "sea_texture");
 
-        // Fallback для текстур, которые не загрузились
         if (redTexture == null && desertTexture != null) {
             cache.put("hex_grass_red", desertTexture);
         }

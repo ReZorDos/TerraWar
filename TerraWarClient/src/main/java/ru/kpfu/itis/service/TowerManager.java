@@ -119,7 +119,6 @@ public class TowerManager {
     public Set<String> getAllBlockedHexesByTowers(int unitOwnerId, int unitLevel) {
         Set<String> allBlockedHexes = new HashSet<>();
 
-        // Проверяем башни всех противников (не только первых 2)
         for (Player player : game.getPlayers()) {
             int opponentId = player.getId();
             if (opponentId == unitOwnerId) continue;

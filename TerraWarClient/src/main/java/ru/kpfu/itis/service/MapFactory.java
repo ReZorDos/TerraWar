@@ -4,11 +4,10 @@ import ru.kpfu.itis.model.GameMap;
 import ru.kpfu.itis.model.Hex;
 import ru.kpfu.itis.enums.Type;
 
+import java.util.*;
+
 public class MapFactory {
 
-    /**
-     * КАРТА 1: БОЛЬШОЙ МАТЕРИК С ПОЛУОСТРОВАМИ
-     */
     public static GameMap createPeninsulaMap() {
         GameMap map = new GameMap(20, 19);
         int[][] peninsula = new int[][]{
@@ -34,17 +33,10 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, peninsula);
-        setStartingZones(map,
-                new int[][]{{5, 4}, {5, 5}, {6, 4}, {6, 5}, {6, 6}},
-                new int[][]{{13, 12}, {13, 13}, {12, 13}, {12, 12}, {13, 11}},
-                new int[][]{{5, 13}, {5, 14}, {6, 13}, {6, 14}, {6, 15}},
-                new int[][]{{13, 4}, {13, 5}, {12, 4}, {12, 5}, {13, 6}});
+        setAutoStartingZones(map);
         return map;
     }
 
-    /**
-     * КАРТА 2: S-ОБРАЗНЫЙ КОНТИНЕНТ
-     */
     public static GameMap createSShapedMap() {
         GameMap map = new GameMap(20, 19);
         int[][] sShaped = new int[][]{
@@ -70,17 +62,10 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, sShaped);
-        setStartingZones(map, 
-                new int[][]{{5, 4}, {6, 4}, {5, 5}, {6, 5}, {5, 6}},
-                new int[][]{{14, 11}, {15, 11}, {14, 10}, {15, 10}, {13, 10}},
-                new int[][]{{5, 13}, {6, 13}, {5, 14}, {6, 14}, {5, 15}},
-                new int[][]{{14, 4}, {15, 4}, {14, 5}, {15, 5}, {13, 5}});
+        setAutoStartingZones(map);
         return map;
     }
 
-    /**
-     * КАРТА 3: ЗВЁЗДООБРАЗНЫЙ МАТЕРИК
-     */
     public static GameMap createStarShapedMap() {
         GameMap map = new GameMap(20, 19);
         int[][] star = new int[][]{
@@ -106,17 +91,10 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, star);
-        setStartingZones(map, 
-                new int[][]{{4, 7}, {5, 6}, {4, 6}, {5, 7}, {5, 8}},
-                new int[][]{{14, 7}, {13, 8}, {14, 8}, {13, 7}, {13, 6}},
-                new int[][]{{9, 3}, {9, 4}, {8, 4}, {10, 4}, {9, 5}},
-                new int[][]{{9, 11}, {9, 12}, {8, 12}, {10, 12}, {9, 13}});
+        setAutoStartingZones(map);
         return map;
     }
 
-    /**
-     * КАРТА 4: Т-ОБРАЗНЫЙ МАТЕРИК
-     */
     public static GameMap createTShapedMap() {
         GameMap map = new GameMap(20, 19);
         int[][] tShaped = new int[][]{
@@ -142,17 +120,10 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, tShaped);
-        setStartingZones(map, 
-                new int[][]{{5, 4}, {5, 5}, {6, 4}, {4, 4}, {6, 5}},
-                new int[][]{{14, 14}, {14, 15}, {13, 14}, {15, 14}, {13, 15}},
-                new int[][]{{5, 13}, {5, 14}, {6, 13}, {4, 13}, {6, 14}},
-                new int[][]{{14, 4}, {14, 5}, {13, 4}, {15, 4}, {13, 5}});
+        setAutoStartingZones(map);
         return map;
     }
 
-    /**
-     * КАРТА 5: С-ОБРАЗНЫЙ МАТЕРИК
-     */
     public static GameMap createCShapedMap() {
         GameMap map = new GameMap(20, 19);
         int[][] cShaped = new int[][]{
@@ -178,91 +149,148 @@ public class MapFactory {
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
         };
         placeHexesFromMap(map, cShaped);
-        setStartingZones(map, 
-                new int[][]{{4, 4}, {5, 4}, {4, 5}, {5, 5}, {4, 6}},
-                new int[][]{{14, 11}, {14, 12}, {13, 11}, {13, 12}, {14, 10}},
-                new int[][]{{4, 13}, {5, 13}, {4, 14}, {5, 14}, {4, 15}},
-                new int[][]{{14, 4}, {14, 5}, {13, 4}, {13, 5}, {14, 6}});
+        setAutoStartingZones(map);
         return map;
     }
 
-    /**
-     * Размещение гексов по карте из шаблона (с водой по периметру)
-     * 1 = гекс (трава), 0 = пусто (вода/null)
-     */
     private static void placeHexesFromMap(GameMap map, int[][] pattern) {
         for (int y = 0; y < pattern.length && y < map.getHeight(); y++) {
             for (int x = 0; x < pattern[y].length && x < map.getWidth(); x++) {
                 if (pattern[y][x] == 1) {
-                    // Создаём новый гекс (Трава)
                     Hex hex = new Hex(x, y, Type.GRASS);
                     map.getGrid().get(y).set(x, hex);
                 } else {
-                    // Если 0, то гекса быть НЕ должно -> null (вода)
                     map.getGrid().get(y).set(x, null);
                 }
             }
         }
     }
 
-    /**
-     * Установка стартовых зон для четырех игроков
-     * @param map Карта игры
-     * @param player0Positions Стартовые позиции для Player 0 (RED)
-     * @param player1Positions Стартовые позиции для Player 1 (BLUE)
-     * @param player2Positions Стартовые позиции для Player 2 (GREEN)
-     * @param player3Positions Стартовые позиции для Player 3 (YELLOW)
-     */
-    private static void setStartingZones(GameMap map, int[][] player0Positions, int[][] player1Positions, 
-                                         int[][] player2Positions, int[][] player3Positions) {
-        // Player 0 (RED) - ID = 0
-        for (int i = 0; i < player0Positions.length; i++) {
-            int x = player0Positions[i][0];
-            int y = player0Positions[i][1];
-            Hex hex = map.getHex(x, y);
-            if (hex != null) {
-                hex.setOwnerId(0);
-                if (i == 0) { // Первая позиция - столица
+    private static void setAutoStartingZones(GameMap map) {
+        int width = map.getWidth();
+        int height = map.getHeight();
+
+        int[][] startingCenters = new int[][]{
+                {4, 4},
+                {width - 4, height - 4},
+                {4, height - 4},
+                {width - 4, 4}
+        };
+
+        for (int playerId = 0; playerId < 4; playerId++) {
+            List<Hex> territory = findCompactTerritory(
+                    map,
+                    startingCenters[playerId][0],
+                    startingCenters[playerId][1],
+                    8
+            );
+
+            if (territory.size() < 5) {
+                territory = findCompactTerritory(
+                        map,
+                        startingCenters[playerId][0],
+                        startingCenters[playerId][1],
+                        15
+                );
+            }
+
+            for (int i = 0; i < territory.size(); i++) {
+                Hex hex = territory.get(i);
+                hex.setOwnerId(playerId);
+                if (i == 0) {
                     hex.setCapital(true);
                 }
             }
         }
-        // Player 1 (BLUE) - ID = 1
-        for (int i = 0; i < player1Positions.length; i++) {
-            int x = player1Positions[i][0];
-            int y = player1Positions[i][1];
-            Hex hex = map.getHex(x, y);
-            if (hex != null) {
-                hex.setOwnerId(1);
-                if (i == 0) { // Первая позиция - столица
-                    hex.setCapital(true);
+    }
+
+    private static List<Hex> findCompactTerritory(GameMap map, int centerX, int centerY, int size) {
+        List<Hex> territory = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        Queue<Hex> queue = new LinkedList<>();
+
+        Hex startHex = findNearestHex(map, centerX, centerY);
+        if (startHex == null) return territory;
+
+        queue.offer(startHex);
+        visited.add(startHex.getX() + "," + startHex.getY());
+        territory.add(startHex);
+
+        while (!queue.isEmpty() && territory.size() < size) {
+            Hex current = queue.poll();
+            int x = current.getX();
+            int y = current.getY();
+
+            int[][] neighbors = getHexNeighbors(x, y, map.getWidth(), map.getHeight());
+
+            for (int[] neighbor : neighbors) {
+                int nx = neighbor[0];
+                int ny = neighbor[1];
+                String key = nx + "," + ny;
+
+                if (!visited.contains(key)) {
+                    Hex hex = map.getHex(nx, ny);
+                    if (hex != null && hex.getOwnerId() == -1) {
+                        visited.add(key);
+                        territory.add(hex);
+                        queue.offer(hex);
+
+                        if (territory.size() >= size) break;
+                    }
                 }
             }
         }
-        // Player 2 (GREEN) - ID = 2
-        for (int i = 0; i < player2Positions.length; i++) {
-            int x = player2Positions[i][0];
-            int y = player2Positions[i][1];
-            Hex hex = map.getHex(x, y);
-            if (hex != null) {
-                hex.setOwnerId(2);
-                if (i == 0) { // Первая позиция - столица
-                    hex.setCapital(true);
+
+        return territory;
+    }
+
+    private static Hex findNearestHex(GameMap map, int centerX, int centerY) {
+        int searchRadius = 5;
+        double minDist = Double.MAX_VALUE;
+        Hex nearest = null;
+
+        for (int y = Math.max(0, centerY - searchRadius);
+             y < Math.min(map.getHeight(), centerY + searchRadius + 1); y++) {
+            for (int x = Math.max(0, centerX - searchRadius);
+                 x < Math.min(map.getWidth(), centerX + searchRadius + 1); x++) {
+                Hex hex = map.getHex(x, y);
+                if (hex != null) {
+                    double dist = Math.sqrt((x - centerX) * (x - centerX) +
+                            (y - centerY) * (y - centerY));
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = hex;
+                    }
                 }
             }
         }
-        // Player 3 (YELLOW) - ID = 3
-        for (int i = 0; i < player3Positions.length; i++) {
-            int x = player3Positions[i][0];
-            int y = player3Positions[i][1];
-            Hex hex = map.getHex(x, y);
-            if (hex != null) {
-                hex.setOwnerId(3);
-                if (i == 0) { // Первая позиция - столица
-                    hex.setCapital(true);
-                }
+
+        return nearest;
+    }
+
+    private static int[][] getHexNeighbors(int x, int y, int width, int height) {
+        int[][] neighborsOdd = {
+                {x - 1, y}, {x + 1, y},
+                {x, y - 1}, {x - 1, y - 1},
+                {x, y + 1}, {x - 1, y + 1}
+        };
+
+        int[][] neighborsEven = {
+                {x - 1, y}, {x + 1, y},
+                {x + 1, y - 1}, {x, y - 1},
+                {x + 1, y + 1}, {x, y + 1}
+        };
+
+        int[][] neighbors = (y % 2 == 0) ? neighborsEven : neighborsOdd;
+        List<int[]> valid = new ArrayList<>();
+
+        for (int[] n : neighbors) {
+            if (n[0] >= 0 && n[0] < width && n[1] >= 0 && n[1] < height) {
+                valid.add(n);
             }
         }
+
+        return valid.toArray(new int[0][]);
     }
 
     public static GameMap getMapById(int mapId) {

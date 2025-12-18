@@ -73,6 +73,11 @@ public class NetworkClient {
         LeaveMessage leaveMsg = new LeaveMessage(reason);
         sendMessage("leave", leaveMsg);
     }
+    
+    public void sendReady(boolean ready) {
+        ReadyMessage readyMsg = new ReadyMessage(ready);
+        sendMessage("ready", readyMsg);
+    }
 
     private void sendMessage(String type, Object data) {
         try {
