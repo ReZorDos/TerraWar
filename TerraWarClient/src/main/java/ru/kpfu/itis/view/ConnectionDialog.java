@@ -22,7 +22,7 @@ public class ConnectionDialog {
         Stage stage = new Stage();
         stage.setTitle("Подключение к серверу");
         stage.setWidth(400);
-        stage.setHeight(300);
+        stage.setHeight(400);
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setResizable(false);
 
@@ -45,7 +45,23 @@ public class ConnectionDialog {
         playerNameField.setPrefWidth(250);
         playerNameField.setPrefHeight(35);
 
-        connectionFields.getChildren().addAll(playerNameLabel, playerNameField);
+        Label serverHostLabel = new Label("IP адрес сервера:");
+        serverHostLabel.setTextFill(Color.WHITE);
+        serverHostLabel.setFont(Font.font("Arial", 14));
+        TextField serverHostField = new TextField(DEFAULT_SERVER_HOST);
+        serverHostField.setPrefWidth(250);
+        serverHostField.setPrefHeight(35);
+
+        Label serverPortLabel = new Label("Порт сервера:");
+        serverPortLabel.setTextFill(Color.WHITE);
+        serverPortLabel.setFont(Font.font("Arial", 14));
+        TextField serverPortField = new TextField(String.valueOf(DEFAULT_SERVER_PORT));
+        serverPortField.setPrefWidth(250);
+        serverPortField.setPrefHeight(35);
+
+        connectionFields.getChildren().addAll(playerNameLabel, playerNameField, 
+                                               serverHostLabel, serverHostField,
+                                               serverPortLabel, serverPortField);
 
         ConnectionResult[] result = new ConnectionResult[1];
         
@@ -79,14 +95,34 @@ public class ConnectionDialog {
 
         connectButton.setOnAction(e -> {
             String playerName = playerNameField.getText().trim();
+            String serverHost = serverHostField.getText().trim();
+            String serverPortText = serverPortField.getText().trim();
 
             if (playerName.isEmpty()) {
                 return;
             }
 
+            if (serverHost.isEmpty()) {
+                serverHost = DEFAULT_SERVER_HOST;
+            }
+
+            int serverPort = DEFAULT_SERVER_PORT;
+            try {
+                if (!serverPortText.isEmpty()) {
+                    serverPort = Integer.parseInt(serverPortText);
+                }
+            } catch (NumberFormatException ex) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Ошибка");
+                alert.setHeaderText(null);
+                alert.setContentText("Неверный формат порта. Используется порт по умолчанию: " + DEFAULT_SERVER_PORT);
+                alert.showAndWait();
+                serverPort = DEFAULT_SERVER_PORT;
+            }
+
             result[0] = new ConnectionResult(
-                    DEFAULT_SERVER_HOST,
-                    DEFAULT_SERVER_PORT,
+                    serverHost,
+                    serverPort,
                     playerName,
                     -1
             );

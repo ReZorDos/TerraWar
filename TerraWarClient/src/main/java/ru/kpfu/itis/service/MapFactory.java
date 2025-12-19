@@ -265,8 +265,7 @@ public class MapFactory {
     }
 
     private static double hexDistance(int x1, int y1, int x2, int y2) {
-        // Используем гексагональное расстояние (кубические координаты)
-        // Конвертируем в кубические координаты для гексагональной сетки
+
         int q1 = x1;
         int r1 = y1 - (x1 - (x1 & 1)) / 2;
         int q2 = x2;
@@ -287,7 +286,6 @@ public class MapFactory {
         queue.offer(new int[]{startX, startY});
         claimed.add(startX + "," + startY);
         
-        // Направления для гексагональной сетки (с учетом смещения четных/нечетных строк)
         int[][] directions = new int[][]{
             {1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}  // для четных строк
         };
@@ -295,7 +293,7 @@ public class MapFactory {
             {1, 0}, {1, 1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}  // для нечетных строк
         };
         
-        int claimedCount = 1; // столица уже заявлена
+        int claimedCount = 1;
         
         while (!queue.isEmpty() && claimedCount < size) {
             int[] current = queue.poll();
@@ -312,9 +310,7 @@ public class MapFactory {
                 
                 if (!claimed.contains(key)) {
                     Hex neighbor = map.getHex(nx, ny);
-                    // Проверяем, что это сухопутный гекс (не море) и не занят другим игроком
                     if (neighbor != null && neighbor.getOwnerId() == -1) {
-                        // Дополнительная проверка, что в grid это не null (не море)
                         if (nx >= 0 && nx < map.getWidth() && ny >= 0 && ny < map.getHeight()) {
                             Hex gridHex = map.getGrid().get(ny).get(nx);
                             if (gridHex != null) {

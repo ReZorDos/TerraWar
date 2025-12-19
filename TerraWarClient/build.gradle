@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'application'
     id 'org.openjfx.javafxplugin' version '0.1.0'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'ru.kpfu.itis'
@@ -28,6 +29,20 @@ dependencies {
 
 application {
     mainClass = 'ru.kpfu.itis.TerraWarClient'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'ru.kpfu.itis.TerraWarClient'
+    }
+}
+
+shadowJar {
+    archiveBaseName.set('TerraWarClient')
+    archiveClassifier.set('')
+    archiveVersion.set('1.0')
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 test {
