@@ -13,7 +13,7 @@ public class PlayerService {
     }
 
     public void updateTotalIncome(Player player) {
-        player.setIncome(player.getBaseIncome() - player.getUnitUpkeep() + player.getFarmIncome());
+        player.setIncome(player.getBaseIncome() - player.getUnitUpkeep() - player.getTowerUpkeep() + player.getFarmIncome());
     }
 
     public void addFarm(Player player, Farm farm) {
